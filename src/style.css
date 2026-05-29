@@ -444,7 +444,16 @@ th {
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 6px;
+  cursor: pointer;
   padding: 10px;
+  transition: box-shadow 0.1s;
+}
+.candidate-list article:hover {
+  box-shadow: 0 1px 4px rgb(0 0 0 / 8%);
+}
+.candidate-list article.selected {
+  border-color: #0065bd;
+  box-shadow: inset 3px 0 0 #0065bd;
 }
 
 .candidate-list div {
@@ -485,6 +494,67 @@ th {
 }
 
 .candidate-list li span {
+  color: #0065bd;
+  font-weight: 700;
+  margin-right: 6px;
+}
+
+.sankey-overlay {
+  background: rgba(15, 23, 42, 0.5);
+  inset: 0;
+  position: fixed;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.sankey-modal {
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 16px 48px rgb(0 0 0 / 25%);
+  max-width: 840px;
+  padding: 20px 24px 24px;
+  width: 100%;
+}
+.sankey-modal-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.sankey-modal-header button {
+  background: transparent;
+  border: 0;
+  color: #64748b;
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 4px 8px;
+}
+.sankey-modal-header button:hover {
+  color: #111827;
+}
+.sankey-modal-header .cap {
+  text-transform: capitalize;
+}
+.sankey-modal svg {
+  display: block;
+  max-height: 320px;
+}
+.sankey-evidence {
+  display: grid;
+  gap: 4px;
+  list-style: none;
+  margin: 8px 0 0;
+  max-height: 120px;
+  overflow: auto;
+  padding: 0;
+}
+.sankey-evidence li {
+  color: #475569;
+  font-size: 0.78rem;
+}
+.sankey-evidence li span {
   color: #0065bd;
   font-weight: 700;
   margin-right: 6px;

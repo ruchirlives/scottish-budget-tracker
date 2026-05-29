@@ -1,7 +1,7 @@
 {
   "version": 1,
   "description": "Generated candidate budget-line changes for review. These are not accepted mappings until manually promoted into budget-line-flows.json.",
-  "generatedAt": "2026-05-29T18:43:54.877Z",
+  "generatedAt": "2026-05-29T19:31:11.587Z",
   "candidates": [
     {
       "id": "extracted-2023-24-gaelic-schools-crtfr-to-gaelic-schools",
@@ -45,7 +45,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Gaelic Schools also appears in 2024-25.",
+          "detail": "Gaelic Schools also appears in 2024-25 at 1.0m.",
           "score": 1
         }
       ]
@@ -119,7 +119,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "CARES Recovery - Capital also appears in 2025-26.",
+          "detail": "CARES Recovery - Capital also appears in 2025-26 at 8.0m.",
           "score": 1
         }
       ]
@@ -147,7 +147,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "CARES Recovery - Resource also appears in 2025-26.",
+          "detail": "CARES Recovery - Resource also appears in 2025-26 at 3.6m.",
           "score": 1
         }
       ]
@@ -267,7 +267,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Equalities also appears in 2025-26.",
+          "detail": "Equalities also appears in 2025-26 at 42.1m.",
           "score": 1
         }
       ]
@@ -410,7 +410,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Holiday Meal Alternative also appears in 2025-26.",
+          "detail": "Holiday Meal Alternative also appears in 2025-26 at 21.8m.",
           "score": 1
         }
       ]
@@ -507,7 +507,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Lifelong Learning & Skills Total Operating Costs (TOC) also appears in 2025-26.",
+          "detail": "Lifelong Learning & Skills Total Operating Costs (TOC) also appears in 2025-26 at 9.2m.",
           "score": 1
         }
       ]
@@ -604,7 +604,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "National Mission on Drugs also appears in 2024-25.",
+          "detail": "National Mission on Drugs also appears in 2024-25 at 62.0m.",
           "score": 1
         }
       ]
@@ -632,7 +632,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Network Infrastructure also appears in 2025-26.",
+          "detail": "Network Infrastructure also appears in 2025-26 at 482.0m.",
           "score": 1
         }
       ]
@@ -660,7 +660,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Police Investigation and Review Commissioner also appears in 2025-26.",
+          "detail": "Police Investigation and Review Commissioner also appears in 2025-26 at 7.4m.",
           "score": 1
         }
       ]
@@ -734,7 +734,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Rail Services also appears in 2025-26.",
+          "detail": "Rail Services also appears in 2025-26 at 897.6m.",
           "score": 1
         }
       ]
@@ -900,7 +900,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Tobacco Control (Smoking) also appears in 2024-25.",
+          "detail": "Tobacco Control (Smoking) also appears in 2024-25 at 2.9m.",
           "score": 1
         }
       ]
@@ -951,7 +951,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Ukrainian Resettlement also appears in 2024-25.",
+          "detail": "Ukrainian Resettlement also appears in 2024-25 at 44.8m.",
           "score": 1
         }
       ]
@@ -979,7 +979,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Woodside Viaduct also appears in 2025-26.",
+          "detail": "Woodside Viaduct also appears in 2025-26 at 23.5m.",
           "score": 1
         }
       ]
@@ -4591,7 +4591,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Community Eyecare also appears in 2024-25.",
+          "detail": "Community Eyecare also appears in 2024-25 at 130.1m.",
           "score": 1
         }
       ]
@@ -4638,7 +4638,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Curriculum also appears in 2025-26.",
+          "detail": "Curriculum also appears in 2025-26 at 31.7m.",
           "score": 1
         }
       ]
@@ -4685,7 +4685,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Children Young People Families Early Intervention Fund (CYPFEIF) and (CYPFAL) Fund also appears in 2025-26.",
+          "detail": "Children Young People Families Early Intervention Fund (CYPFEIF) and (CYPFAL) Fund also appears in 2025-26 at 18.3m.",
           "score": 1
         }
       ]
@@ -4732,7 +4732,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Affordable Housing Supply Programme also appears in 2025-26.",
+          "detail": "Affordable Housing Supply Programme also appears in 2025-26 at 676.4m.",
           "score": 1
         }
       ]
@@ -4821,7 +4821,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Nationally Commissioned Community Justice Services also appears in 2024-25.",
+          "detail": "Nationally Commissioned Community Justice Services also appears in 2024-25 at 31.2m.",
           "score": 1
         }
       ]
@@ -4868,7 +4868,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Onshore Electricity, Strategy and Consents also appears in 2025-26.",
+          "detail": "Onshore Electricity, Strategy and Consents also appears in 2025-26 at -0.9m.",
           "score": 1
         }
       ]
@@ -4915,7 +4915,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Voted Loans also appears in 2025-26.",
+          "detail": "Voted Loans also appears in 2025-26 at 170.0m.",
           "score": 1
         }
       ]
@@ -4962,7 +4962,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Food and Drink also appears in 2025-26.",
+          "detail": "Food and Drink also appears in 2025-26 at 10.1m.",
           "score": 1
         }
       ]
@@ -5009,7 +5009,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Interest On Voted Loans also appears in 2025-26.",
+          "detail": "Interest On Voted Loans also appears in 2025-26 at -129.0m.",
           "score": 1
         }
       ]
@@ -5056,7 +5056,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Mental Health Services also appears in 2025-26.",
+          "detail": "Mental Health Services also appears in 2025-26 at 172.4m.",
           "score": 1
         }
       ]
@@ -5103,7 +5103,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Private Water also appears in 2025-26.",
+          "detail": "Private Water also appears in 2025-26 at 6.8m.",
           "score": 1
         }
       ]
@@ -5150,7 +5150,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Schools Unitary Charges also appears in 2025-26.",
+          "detail": "Schools Unitary Charges also appears in 2025-26 at 99.4m.",
           "score": 1
         }
       ]
@@ -5197,7 +5197,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "SEPA Capital also appears in 2025-26.",
+          "detail": "SEPA Capital also appears in 2025-26 at 5.6m.",
           "score": 1
         }
       ]
@@ -5244,7 +5244,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Zero Waste also appears in 2025-26.",
+          "detail": "Zero Waste also appears in 2025-26 at 23.2m.",
           "score": 1
         }
       ]
@@ -5291,7 +5291,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Environmental Standards Scotland also appears in 2025-26.",
+          "detail": "Environmental Standards Scotland also appears in 2025-26 at 3.8m.",
           "score": 1
         }
       ]
@@ -5338,7 +5338,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "NatureScot Resource - Staff costs also appears in 2025-26.",
+          "detail": "NatureScot Resource - Staff costs also appears in 2025-26 at 39.0m.",
           "score": 1
         }
       ]
@@ -5385,7 +5385,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "SEPA Resource - Staff Costs also appears in 2025-26.",
+          "detail": "SEPA Resource - Staff Costs also appears in 2025-26 at 74.4m.",
           "score": 1
         }
       ]
@@ -5432,7 +5432,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Drinking Water Quality Regulator also appears in 2025-26.",
+          "detail": "Drinking Water Quality Regulator also appears in 2025-26 at 0.5m.",
           "score": 1
         }
       ]
@@ -5479,7 +5479,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "SEPA Resource - Other also appears in 2025-26.",
+          "detail": "SEPA Resource - Other also appears in 2025-26 at 24.0m.",
           "score": 1
         }
       ]
@@ -5526,7 +5526,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "NatureScot Resource - other also appears in 2025-26.",
+          "detail": "NatureScot Resource - other also appears in 2025-26 at 19.0m.",
           "score": 1
         }
       ]
@@ -5783,7 +5783,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "NatureScot Resource Consumption - Depreciation also appears in 2025-26.",
+          "detail": "NatureScot Resource Consumption - Depreciation also appears in 2025-26 at 2.2m.",
           "score": 1
         }
       ]
@@ -5830,7 +5830,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "SEPA Income also appears in 2025-26.",
+          "detail": "SEPA Income also appears in 2025-26 at -56.0m.",
           "score": 1
         }
       ]
@@ -5919,7 +5919,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Human Rights also appears in 2025-26.",
+          "detail": "Human Rights also appears in 2025-26 at 3.3m.",
           "score": 1
         }
       ]
@@ -5966,7 +5966,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "NatureScot capital also appears in 2025-26.",
+          "detail": "NatureScot capital also appears in 2025-26 at 8.0m.",
           "score": 1
         }
       ]
@@ -6181,7 +6181,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Operating Costs also appears in 2025-26.",
+          "detail": "Operating Costs also appears in 2025-26 at 16.0m.",
           "score": 1
         }
       ]
@@ -6228,7 +6228,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Cladding Remediation also appears in 2025-26.",
+          "detail": "Cladding Remediation also appears in 2025-26 at 52.2m.",
           "score": 1
         }
       ]
@@ -6569,7 +6569,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Nature Restoration also appears in 2025-26.",
+          "detail": "Nature Restoration also appears in 2025-26 at 21.0m.",
           "score": 1
         }
       ]
@@ -6742,7 +6742,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Water Environment also appears in 2025-26.",
+          "detail": "Water Environment also appears in 2025-26 at 4.5m.",
           "score": 1
         }
       ]
@@ -6873,7 +6873,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Hydro Nation also appears in 2025-26.",
+          "detail": "Hydro Nation also appears in 2025-26 at 4.1m.",
           "score": 1
         }
       ]
@@ -6962,7 +6962,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Mental Health & Wellbeing also appears in 2025-26.",
+          "detail": "Mental Health & Wellbeing also appears in 2025-26 at 55.2m.",
           "score": 1
         }
       ]
@@ -7135,7 +7135,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Scottish Adult Disability Living Allowance also appears in 2025-26.",
+          "detail": "Scottish Adult Disability Living Allowance also appears in 2025-26 at 393.9m.",
           "score": 1
         }
       ]
@@ -7182,7 +7182,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Energy - Energy Industries also appears in 2025-26.",
+          "detail": "Energy - Energy Industries also appears in 2025-26 at 69.1m.",
           "score": 1
         }
       ]
@@ -7229,7 +7229,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "SEPA Resource - Depreciation also appears in 2025-26.",
+          "detail": "SEPA Resource - Depreciation also appears in 2025-26 at 7.4m.",
           "score": 1
         }
       ]
@@ -7360,7 +7360,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Local Government Advice and Policy also appears in 2025-26.",
+          "detail": "Local Government Advice and Policy also appears in 2025-26 at 3.2m.",
           "score": 1
         }
       ]
@@ -7449,7 +7449,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Offshore Wind also appears in 2025-26.",
+          "detail": "Offshore Wind also appears in 2025-26 at 162.5m.",
           "score": 1
         }
       ]
@@ -7496,7 +7496,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Leadership, Training and Capacity also appears in 2025-26.",
+          "detail": "Leadership, Training and Capacity also appears in 2025-26 at 11.1m.",
           "score": 1
         }
       ]
@@ -7543,7 +7543,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Person Centred and Participation also appears in 2025-26.",
+          "detail": "Person Centred and Participation also appears in 2025-26 at 4.4m.",
           "score": 1
         }
       ]
@@ -7842,7 +7842,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Noise and Air Quality Action also appears in 2025-26.",
+          "detail": "Noise and Air Quality Action also appears in 2025-26 at 2.6m.",
           "score": 1
         }
       ]
@@ -7889,7 +7889,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Energy Efficiency and Decarbonisation also appears in 2025-26.",
+          "detail": "Energy Efficiency and Decarbonisation also appears in 2025-26 at 335.7m.",
           "score": 1
         }
       ]
@@ -8020,7 +8020,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Flood Risk Management also appears in 2025-26.",
+          "detail": "Flood Risk Management also appears in 2025-26 at 15.8m.",
           "score": 1
         }
       ]
@@ -8109,7 +8109,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "College Not for Profit (NPD) Expenditure also appears in 2025-26.",
+          "detail": "College Not for Profit (NPD) Expenditure also appears in 2025-26 at 31.6m.",
           "score": 1
         }
       ]
@@ -8156,7 +8156,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "RBGE Resource - Income also appears in 2025-26.",
+          "detail": "RBGE Resource - Income also appears in 2025-26 at -5.0m.",
           "score": 1
         }
       ]
@@ -8959,7 +8959,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "International Activity also appears in 2025-26.",
+          "detail": "International Activity also appears in 2025-26 at 1.0m.",
           "score": 1
         }
       ]
@@ -9300,7 +9300,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Whole Family Wellbeing Funding also appears in 2024-25.",
+          "detail": "Whole Family Wellbeing Funding also appears in 2024-25 at 50.0m.",
           "score": 1
         }
       ]
@@ -9767,7 +9767,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Winter Heating Payment also appears in 2024-25.",
+          "detail": "Winter Heating Payment also appears in 2024-25 at 24.4m.",
           "score": 1
         }
       ]
@@ -11116,7 +11116,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Energy Efficiency and Decarbonisation Financial Transactions (Income) also appears in 2025-26.",
+          "detail": "Energy Efficiency and Decarbonisation Financial Transactions (Income) also appears in 2025-26 at -16.5m.",
           "score": 1
         }
       ]
@@ -11163,7 +11163,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Support for Capital also appears in 2025-26.",
+          "detail": "Support for Capital also appears in 2025-26 at 556.0m.",
           "score": 1
         }
       ]
@@ -11210,7 +11210,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Gaelic Education, Culture and Arts also appears in 2024-25.",
+          "detail": "Gaelic Education, Culture and Arts also appears in 2024-25 at 1.6m.",
           "score": 1
         }
       ]
@@ -11341,7 +11341,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Just Transition Fund also appears in 2025-26.",
+          "detail": "Just Transition Fund also appears in 2025-26 at 15.9m.",
           "score": 1
         }
       ]
@@ -12144,7 +12144,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Security, Safeguarding, Organised Crime and Veterans also appears in 2025-26.",
+          "detail": "Security, Safeguarding, Organised Crime and Veterans also appears in 2025-26 at 3.2m.",
           "score": 1
         }
       ]
@@ -12275,7 +12275,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Social Care Support and NCS Delivery also appears in 2024-25.",
+          "detail": "Social Care Support and NCS Delivery also appears in 2024-25 at 905.3m.",
           "score": 1
         }
       ]
@@ -12826,7 +12826,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Child Winter Heating Payment also appears in 2025-26.",
+          "detail": "Child Winter Heating Payment also appears in 2025-26 at 11.9m.",
           "score": 1
         }
       ]
@@ -13293,7 +13293,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Stroke and Thrombectomy also appears in 2025-26.",
+          "detail": "Stroke and Thrombectomy also appears in 2025-26 at 16.0m.",
           "score": 1
         }
       ]
@@ -13844,7 +13844,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Qualifications and Accreditation also appears in 2025-26.",
+          "detail": "Qualifications and Accreditation also appears in 2025-26 at 2.7m.",
           "score": 1
         }
       ]
@@ -14353,7 +14353,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Delivery Costs - Resource also appears in 2024-25.",
+          "detail": "Delivery Costs - Resource also appears in 2024-25 at 5.0m.",
           "score": 1
         }
       ]
@@ -14442,7 +14442,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Energy Efficiency and Decarbonisation Financial Transactions also appears in 2025-26.",
+          "detail": "Energy Efficiency and Decarbonisation Financial Transactions also appears in 2025-26 at 14.0m.",
           "score": 1
         }
       ]
@@ -14489,7 +14489,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Collaborative Care Home Support also appears in 2025-26.",
+          "detail": "Collaborative Care Home Support also appears in 2025-26 at 14.0m.",
           "score": 1
         }
       ]
@@ -14662,7 +14662,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Local Governance also appears in 2025-26.",
+          "detail": "Local Governance also appears in 2025-26 at 0.5m.",
           "score": 1
         }
       ]
@@ -14751,7 +14751,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Student Support & Wellbeing also appears in 2025-26.",
+          "detail": "Student Support & Wellbeing also appears in 2025-26 at 0.5m.",
           "score": 1
         }
       ]
@@ -14798,7 +14798,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Consumer Scotland also appears in 2024-25.",
+          "detail": "Consumer Scotland also appears in 2024-25 at 2.4m.",
           "score": 1
         }
       ]
@@ -14887,7 +14887,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Community Led Local Delivery also appears in 2025-26.",
+          "detail": "Community Led Local Delivery also appears in 2025-26 at 9.0m.",
           "score": 1
         }
       ]
@@ -14934,7 +14934,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Schools Reform also appears in 2025-26.",
+          "detail": "Schools Reform also appears in 2025-26 at 16.9m.",
           "score": 1
         }
       ]
@@ -15107,7 +15107,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Land Reform also appears in 2025-26.",
+          "detail": "Land Reform also appears in 2025-26 at 9.8m.",
           "score": 1
         }
       ]
@@ -15196,7 +15196,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Vacant and Derelict Land  (LA Capital Specific Grant) also appears in 2025-26.",
+          "detail": "Vacant and Derelict Land  (LA Capital Specific Grant) also appears in 2025-26 at 7.6m.",
           "score": 1
         }
       ]
@@ -15419,7 +15419,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Skills Programmes also appears in 2025-26.",
+          "detail": "Skills Programmes also appears in 2025-26 at 16.6m.",
           "score": 1
         }
       ]
@@ -15508,7 +15508,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Housing Receipts also appears in 2024-25.",
+          "detail": "Housing Receipts also appears in 2024-25 at -94.3m.",
           "score": 1
         }
       ]
@@ -16059,7 +16059,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Justice Transformation also appears in 2025-26.",
+          "detail": "Justice Transformation also appears in 2025-26 at 4.1m.",
           "score": 1
         }
       ]
@@ -16106,7 +16106,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Climate Action and Policy also appears in 2025-26.",
+          "detail": "Climate Action and Policy also appears in 2025-26 at 57.0m.",
           "score": 1
         }
       ]
@@ -16153,7 +16153,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Scottish Land Commission also appears in 2025-26.",
+          "detail": "Scottish Land Commission also appears in 2025-26 at 1.7m.",
           "score": 1
         }
       ]
@@ -16242,7 +16242,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Complex Care also appears in 2025-26.",
+          "detail": "Complex Care also appears in 2025-26 at 31.2m.",
           "score": 1
         }
       ]
@@ -16289,7 +16289,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Natural Resources also appears in 2025-26.",
+          "detail": "Natural Resources also appears in 2025-26 at 5.1m.",
           "score": 1
         }
       ]
@@ -16336,7 +16336,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Teacher's Pay also appears in 2025-26.",
+          "detail": "Teacher's Pay also appears in 2025-26 at 243.8m.",
           "score": 1
         }
       ]
@@ -16551,7 +16551,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Mainstreaming and inclusion also appears in 2025-26.",
+          "detail": "Mainstreaming and inclusion also appears in 2025-26 at 9.8m.",
           "score": 1
         }
       ]
@@ -16598,7 +16598,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "RBGE Resource - Staff Costs also appears in 2025-26.",
+          "detail": "RBGE Resource - Staff Costs also appears in 2025-26 at 12.0m.",
           "score": 1
         }
       ]
@@ -16645,7 +16645,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Marine Directorate also appears in 2025-26.",
+          "detail": "Marine Directorate also appears in 2025-26 at 79.6m.",
           "score": 1
         }
       ]
@@ -16776,7 +16776,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "RBGE Depreciation also appears in 2025-26.",
+          "detail": "RBGE Depreciation also appears in 2025-26 at 3.5m.",
           "score": 1
         }
       ]
@@ -16907,7 +16907,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Medical Postgraduates also appears in 2025-26.",
+          "detail": "Medical Postgraduates also appears in 2025-26 at 58.3m.",
           "score": 1
         }
       ]
@@ -17332,7 +17332,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Strategic Policy and Sponsorship also appears in 2025-26.",
+          "detail": "Strategic Policy and Sponsorship also appears in 2025-26 at 3.8m.",
           "score": 1
         }
       ]
@@ -17715,7 +17715,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "RBGE Capital also appears in 2025-26.",
+          "detail": "RBGE Capital also appears in 2025-26 at 15.4m.",
           "score": 1
         }
       ]
@@ -17846,7 +17846,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Research Data Scotland (RDS) also appears in 2024-25.",
+          "detail": "Research Data Scotland (RDS) also appears in 2024-25 at 3.3m.",
           "score": 1
         }
       ]
@@ -18061,7 +18061,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Reform Programme also appears in 2025-26.",
+          "detail": "Reform Programme also appears in 2025-26 at 2.7m.",
           "score": 1
         }
       ]
@@ -18108,7 +18108,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Corporate Running Costs also appears in 2025-26.",
+          "detail": "Corporate Running Costs also appears in 2025-26 at 207.9m.",
           "score": 1
         }
       ]
@@ -18331,7 +18331,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Medical Undergraduates also appears in 2025-26.",
+          "detail": "Medical Undergraduates also appears in 2025-26 at 74.7m.",
           "score": 1
         }
       ]
@@ -18420,7 +18420,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Pension Age Disability Payment also appears in 2025-26.",
+          "detail": "Pension Age Disability Payment also appears in 2025-26 at 833.6m.",
           "score": 1
         }
       ]
@@ -18467,7 +18467,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Carer Support Payment also appears in 2025-26.",
+          "detail": "Carer Support Payment also appears in 2025-26 at 458.7m.",
           "score": 1
         }
       ]
@@ -18598,7 +18598,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Pension Age Winter Heating Payment also appears in 2025-26.",
+          "detail": "Pension Age Winter Heating Payment also appears in 2025-26 at 100.6m.",
           "score": 1
         }
       ]
@@ -18863,7 +18863,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Economic and Other Surveys also appears in 2025-26.",
+          "detail": "Economic and Other Surveys also appears in 2025-26 at 3.9m.",
           "score": 1
         }
       ]
@@ -19794,7 +19794,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Program and Running Costs also appears in 2025-26.",
+          "detail": "Program and Running Costs also appears in 2025-26 at 24.4m.",
           "score": 1
         }
       ]
@@ -20178,7 +20178,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Major Events also appears in 2025-26.",
+          "detail": "Major Events also appears in 2025-26 at 6.4m.",
           "score": 1
         }
       ]
@@ -20443,7 +20443,7 @@
         },
         {
           "kind": "continues_next_year",
-          "detail": "Woodland Grants also appears in 2025-26.",
+          "detail": "Woodland Grants also appears in 2025-26 at 53.0m.",
           "score": 1
         }
       ]

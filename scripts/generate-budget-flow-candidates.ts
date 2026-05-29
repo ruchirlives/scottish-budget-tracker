@@ -83,12 +83,12 @@ function textEvidenceScore(from: BudgetRow, to: BudgetRow) {
 function continuesNextYear(row: BudgetRow, allRows: BudgetRow[], years: string[]) {
   const yearIndex = years.indexOf(row.year);
   const nextYear = years[yearIndex + 1];
-  if (!nextYear) return false;
-  return allRows.some((candidate) => (
+  if (!nextYear) return null;
+  return allRows.find((candidate) => (
     candidate.year === nextYear
     && candidate.canonicalArea === row.canonicalArea
     && candidate.portfolio === row.portfolio
-  ));
+  )) ?? null;
 }
 
 function amountRatio(left: number, right: number) {
@@ -212,7 +212,7 @@ async function main() {
             { kind: 'description_match', detail: `${to.portfolio} terms appear in prior ${parent.from.portfolio} description.`, score: Number(parent.descriptionScore.toFixed(3)) },
             { kind: parent.from.canonicalArea === to.canonicalArea ? 'same_policy_area' : 'related_policy_area', detail: `${parent.from.canonicalArea} -> ${to.canonicalArea}`, score: Number(parent.areaScore.toFixed(3)) },
             { kind: 'amount_similarity', detail: `${parent.from.total.toFixed(1)}m -> ${to.total.toFixed(1)}m`, score: Number(parent.amountScore.toFixed(3)) },
-            ...(hasNextYearContinuation ? [{ kind: 'continues_next_year', detail: `${to.portfolio} also appears in ${years[years.indexOf(toYear) + 1]}.`, score: 1 }] : []),
+            ...(hasNextYearContinuation ? [{ kind: 'continues_next_year', detail: `${to.portfolio} also appears in ${years[years.indexOf(toYear) + 1]} at ${hasNextYearContinuation.total.toFixed(1)}m.`, score: 1 }] : []),
           ],
         });
       }
@@ -221,6 +221,7 @@ async function main() {
         candidate.to.some((node) => node.year === to.year && node.canonicalArea === to.canonicalArea && node.portfolio === to.portfolio)
       ));
       if (!hasIncoming) {
+        const continuesRow = continuesNextYear(to, usefulRows, years);
         addCandidate(candidates, {
           id: `new-${slug(toYear)}-${slug(to.canonicalArea)}-${slug(to.portfolio)}`,
           type: 'new',
@@ -231,7 +232,7 @@ async function main() {
           reason: `Line appears in ${toYear} but not ${fromYear}.`,
           evidence: [
             { kind: 'new_exact_label', detail: `${to.portfolio} does not appear as an exact line in ${fromYear}.` },
-            ...(continuesNextYear(to, usefulRows, years) ? [{ kind: 'continues_next_year', detail: `${to.portfolio} also appears in ${years[years.indexOf(toYear) + 1]}.`, score: 1 }] : []),
+            ...(continuesRow ? [{ kind: 'continues_next_year', detail: `${to.portfolio} also appears in ${years[years.indexOf(toYear) + 1]} at ${continuesRow.total.toFixed(1)}m.`, score: 1 }] : []),
           ],
         });
       }

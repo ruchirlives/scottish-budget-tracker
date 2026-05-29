@@ -75,6 +75,32 @@ const rows = level4Data as BudgetRow[];
 const flows = flowData.flows as BudgetFlow[];
 const flowCandidates = candidateData.candidates as FlowCandidate[];
 const years = Array.from(new Set(rows.map((row) => row.year))).sort();
+
+function flowToCandidate(f: BudgetFlow): FlowCandidate {
+  const linksWithTotal = f.links.map((lk) => {
+    const row = rows.find((r) => r.year === lk.year && r.canonicalArea === lk.canonicalArea && r.portfolio === lk.portfolio);
+    return { ...lk, total: row?.total ?? 0 };
+  });
+  return {
+    id: f.id,
+    type: 'continuation',
+    confidence: f.confidence,
+    score: 1,
+    from: linksWithTotal.slice(0, -1),
+    to: linksWithTotal.slice(1),
+    reason: f.notes ?? 'Exact label match across years.',
+    evidence: linksWithTotal.slice(1).map((lk) => ({
+      kind: 'continues_next_year',
+      detail: `${lk.portfolio} appears in ${lk.year} at ${lk.total.toFixed(1)}m.`,
+      score: 1,
+    })),
+  };
+}
+
+const allBudgetLines: FlowCandidate[] = [
+  ...flowCandidates,
+  ...flows.map(flowToCandidate),
+];
 const latestYear = years.at(-1) ?? '';
 const palette = ['#0065bd', '#2d7d46', '#d16b00', '#6f4bb2', '#c0392b', '#0f8b8d', '#5c6670'];
 
@@ -112,6 +138,176 @@ function shortText(value: string, maxLength = 140) {
   return value.length > maxLength ? `${value.slice(0, maxLength).trim()}...` : value;
 }
 
+function SankeyViz({ candidate, allRows, allYears }: { candidate: FlowCandidate; allRows: BudgetRow[]; allYears: string[] }) {
+  const { from, to } = candidate;
+  const hasFrom = from.length > 0;
+  const hasTo = to.length > 0;
+
+  const area = hasFrom ? from[0].canonicalArea : hasTo ? to[0].canonicalArea : '';
+  const portfolios = [...new Set([...from.map((n) => n.portfolio), ...to.map((n) => n.portfolio)])];
+  const portColor = new Map<string, string>();
+  portfolios.forEach((p, i) => portColor.set(p, palette[i % palette.length]));
+
+  const MIN_SEG = 10;
+
+  interface YearData { year: string; portTotals: Map<string, number>; portSum: number; areaTotal: number; }
+  const yearData: YearData[] = [];
+
+  const allKnownAreas = [...new Set([area, ...from.map((n) => n.canonicalArea), ...to.map((n) => n.canonicalArea)])];
+
+  for (const year of allYears) {
+    const yearRows = allRows.filter((r) => r.year === year);
+    const yearArea = allKnownAreas.find((a) => yearRows.some((r) => r.canonicalArea === a)) ?? area;
+    const areaRows = yearRows.filter((r) => r.canonicalArea === yearArea);
+    const areaTotal = areaRows.reduce((s, r) => s + r.total, 0);
+    const portTotals = new Map<string, number>();
+    for (const port of portfolios) {
+      const total = yearRows.filter((r) => r.portfolio === port).reduce((s, r) => s + r.total, 0);
+      if (total !== 0) portTotals.set(port, total);
+    }
+    const portSum = [...portTotals.values()].reduce((s, v) => s + Math.abs(v), 0);
+    if (areaTotal > 0) {
+      yearData.push({ year, portTotals, portSum, areaTotal });
+    }
+  }
+
+  if (yearData.length <= 1) {
+    return <p className="data-note" style={{ textAlign: 'center', margin: '24px 0' }}>Not enough year data to visualise flow.</p>;
+  }
+
+  const maxArea = Math.max(...yearData.map((d) => d.areaTotal), 1);
+  const W = Math.max(580, yearData.length * 130);
+  const H = 280;
+  const COL_W = (W - 24) / yearData.length;
+  const BAR_W = Math.min(COL_W - 24, 70);
+  const PAD_T = 36;
+  const PAD_B = 44;
+  const DRAW_H = H - PAD_T - PAD_B;
+
+  interface SegRect { x: number; y: number; w: number; h: number; portfolio: string; total: number; color: string; year: string; }
+  const allSegs: SegRect[] = [];
+
+  for (let yi = 0; yi < yearData.length; yi++) {
+    const yd = yearData[yi];
+    const cx = 12 + yi * COL_W + (COL_W - BAR_W) / 2;
+    const barH = Math.max(18, (yd.areaTotal / maxArea) * DRAW_H);
+    const barY = H - PAD_B - barH;
+
+    const active = portfolios
+      .filter((p) => yd.portTotals.has(p))
+      .sort((a, b) => (yd.portTotals.get(b) ?? 0) - (yd.portTotals.get(a) ?? 0));
+
+    if (active.length > 0) {
+      const totalSegH = active.reduce((s, p) => {
+        const pH = (yd.portTotals.get(p) ?? 0) / yd.areaTotal * barH;
+        return s + Math.max(MIN_SEG, pH);
+      }, 0);
+      const segSpace = Math.min(barH, totalSegH);
+      let cumY = barY + (barH - segSpace);
+      for (const port of active) {
+        const pAmt = Math.abs(yd.portTotals.get(port) ?? 0);
+        const natH = (pAmt / yd.areaTotal) * barH;
+        const pct = totalSegH > 0 ? Math.max(MIN_SEG, natH) / segSpace : 1 / active.length;
+        const segH = Math.max(MIN_SEG, Math.round(pct * segSpace));
+        allSegs.push({ x: cx, y: cumY, w: BAR_W, h: segH, portfolio: port, total: pAmt, color: portColor.get(port) ?? '#94a3b8', year: yd.year });
+        cumY += segH;
+      }
+    }
+  }
+
+  interface LinkDef { fx: number; fy: number; tx: number; ty: number; amt: number; color: string; kind: string; }
+  const links: LinkDef[] = [];
+  let maxLinkAmt = 1;
+
+  for (let yi = 0; yi < yearData.length - 1; yi++) {
+    for (const port of portfolios) {
+      const fp = allSegs.find((p) => p.portfolio === port && p.year === yearData[yi].year);
+      const tp = allSegs.find((p) => p.portfolio === port && p.year === yearData[yi + 1].year);
+      if (fp && tp) {
+        const amt = Math.abs(tp.total);
+        links.push({ fx: fp.x + fp.w, fy: fp.y + fp.h / 2, tx: tp.x, ty: tp.y + tp.h / 2, amt, color: fp.color, kind: 'continuation' });
+        if (amt > maxLinkAmt) maxLinkAmt = amt;
+      }
+    }
+  }
+
+  for (const fn of from) {
+    for (const tn of to) {
+      if (fn.portfolio !== tn.portfolio) {
+        const fp = allSegs.find((p) => p.portfolio === fn.portfolio && p.year === fn.year);
+        const tp = allSegs.find((p) => p.portfolio === tn.portfolio && p.year === tn.year);
+        if (fp && tp) {
+          const amt = Math.abs(tn.total);
+          links.push({ fx: fp.x + fp.w, fy: fp.y + fp.h / 2, tx: tp.x, ty: tp.y + tp.h / 2, amt, color: portColor.get(tn.portfolio) ?? '#d16b00', kind: 'transition' });
+          if (amt > maxLinkAmt) maxLinkAmt = amt;
+        }
+      }
+    }
+  }
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', maxHeight: '320px' }}>
+      {yearData.map((yd, i) => (
+        <text key={`yh-${i}`} x={12 + i * COL_W + COL_W / 2} y={14} fill="#334155" fontSize={10} fontWeight={700} textAnchor="middle">{yd.year}</text>
+      ))}
+      {links.map((l, i) => {
+        const thick = Math.max(2, (l.amt / maxLinkAmt) * 24);
+        const cp = (l.tx - l.fx) * 0.4;
+        return (
+          <path key={i} d={`M ${l.fx},${l.fy - thick / 2} C ${l.fx + cp},${l.fy - thick / 2} ${l.tx - cp},${l.ty - thick / 2} ${l.tx},${l.ty - thick / 2} L ${l.tx},${l.ty + thick / 2} C ${l.tx - cp},${l.ty + thick / 2} ${l.fx + cp},${l.fy + thick / 2} ${l.fx},${l.fy + thick / 2} Z`}
+            fill={`${l.color}30`} stroke={`${l.color}50`} strokeWidth={0.5} strokeDasharray={l.kind === 'transition' ? '5,3' : undefined} />
+        );
+      })}
+      {yearData.map((yd, yi) => {
+        const cx = 12 + yi * COL_W + (COL_W - BAR_W) / 2;
+        const barH = Math.max(18, (yd.areaTotal / maxArea) * DRAW_H);
+        const barY = H - PAD_B - barH;
+        return (
+          <g key={`bar-${yi}`}>
+            <rect x={cx} y={barY} width={BAR_W} height={barH} fill="#f1f5f9" stroke="#e2e8f0" strokeWidth={1} rx={4} />
+            <text x={cx + BAR_W / 2} y={barY - 5} fill="#475569" fontSize={10} fontWeight={600} textAnchor="middle">{money(yd.areaTotal)}</text>
+            {yd.portSum > 0 && (
+              <text x={cx + BAR_W / 2} y={barY + barH + 11} fill="#64748b" fontSize={8} textAnchor="middle">{((yd.portSum / yd.areaTotal) * 100).toFixed(1)}%</text>
+            )}
+          </g>
+        );
+      })}
+      {allSegs.map((s, i) => {
+        const yd = yearData.find((d) => d.year === s.year);
+        const pct = yd ? (s.total / yd.areaTotal * 100).toFixed(1) : null;
+        return (
+          <g key={`seg-${i}`}>
+            <rect x={s.x} y={s.y} width={s.w} height={s.h} fill={s.color} rx={1.5} stroke="rgba(255,255,255,0.6)" strokeWidth={0.5} />
+            {s.h > 16 && (
+              <text x={s.x + s.w / 2} y={s.y + s.h / 2} fill="white" fontSize={8} fontWeight={700} textAnchor="middle" dominantBaseline="middle">
+                {s.portfolio.length > 14 ? s.portfolio.slice(0, 12) + '…' : s.portfolio}
+              </text>
+            )}
+            {s.h > 14 && s.h <= 16 && (
+              <text x={s.x + s.w / 2} y={s.y + s.h / 2} fill="white" fontSize={7} fontWeight={600} textAnchor="middle" dominantBaseline="middle">
+                {money(s.total)}
+              </text>
+            )}
+            <title>{`${s.portfolio}: ${money(s.total)}${pct ? ` (${pct}%)` : ''} of ${area}`}</title>
+          </g>
+        );
+      })}
+      {links.filter((l) => l.kind === 'continuation').map((l, i) => {
+        const mx = (l.fx + l.tx) / 2;
+        const my = (l.fy + l.ty) / 2;
+        return <text key={`la-${i}`} x={mx} y={my} fill="#475569" fontSize={8} fontWeight={600} textAnchor="middle" dominantBaseline="middle">{money(l.amt)}</text>;
+      })}
+      {links.filter((l) => l.kind === 'transition').map((l, i) => {
+        const mx = (l.fx + l.tx) / 2;
+        const my = (l.fy + l.ty) / 2;
+        return <text key={`ta-${i}`} x={mx} y={my} fill="#d16b00" fontSize={8} fontWeight={700} textAnchor="middle" dominantBaseline="middle">{money(l.amt)}</text>;
+      })}
+      {!hasFrom && hasTo && <text x={W / 2} y={H / 2} fill="#64748b" fontSize={13} fontStyle="italic" textAnchor="middle" dominantBaseline="middle">New line — no prior-year data</text>}
+      {hasFrom && !hasTo && <text x={W / 2} y={H / 2} fill="#64748b" fontSize={13} fontStyle="italic" textAnchor="middle" dominantBaseline="middle">Retired — no continuation</text>}
+      {area && <text x={W / 2} y={H - 4} fill="#94a3b8" fontSize={9} fontStyle="italic" textAnchor="middle">within {area}</text>}
+    </svg>
+  );
+}
 const maxBudgetAreaTotal = Math.max(...years.flatMap((year) => aggregateBy(rows.filter((row) => row.year === year), (row) => row.canonicalArea).map((row) => row.total)));
 function BudgetTracker() {
   const [selectedYear, setSelectedYear] = React.useState(latestYear);
@@ -122,6 +318,7 @@ function BudgetTracker() {
   const [selectedFlowId, setSelectedFlowId] = React.useState(flows[0]?.id ?? '');
   const [flowQuery, setFlowQuery] = React.useState('');
   const [candidateQuery, setCandidateQuery] = React.useState('');
+  const [selectedCandidate, setSelectedCandidate] = React.useState<FlowCandidate | null>(null);
 
   React.useEffect(() => {
     setSelectedArea(null);
@@ -157,7 +354,7 @@ function BudgetTracker() {
     || flow.links.some((link) => link.canonicalArea.toLowerCase().includes(flowQuery.toLowerCase()))
     || flow.type.toLowerCase().includes(flowQuery.toLowerCase())
   ));
-  const visibleCandidates = flowCandidates.filter((candidate) => {
+  const visibleCandidates = allBudgetLines.filter((candidate) => {
     const haystack = [
       candidate.type,
       candidate.confidence,
@@ -302,15 +499,15 @@ function BudgetTracker() {
             <div className="panel table-panel">
               <div className="panel-title">
                 <Download size={20} />
-                <h2>Candidate changes for review</h2>
+                <h2>Track budget lines</h2>
               </div>
               <label className="search full">
                 <Search size={18} />
-                <input value={candidateQuery} onChange={(event) => setCandidateQuery(event.target.value)} placeholder="Filter candidates by type, area, or line" />
+                <input value={candidateQuery} onChange={(event) => setCandidateQuery(event.target.value)} placeholder="Filter by type, area, or line" />
               </label>
               <div className="candidate-list">
                 {visibleCandidates.map((candidate) => (
-                  <article key={candidate.id}>
+                  <article key={candidate.id} onClick={() => setSelectedCandidate(candidate)} className={selectedCandidate?.id === candidate.id ? 'selected' : ''}>
                     <div>
                       <strong>{candidate.type}</strong>
                       <span>{candidate.confidence} | score {candidate.score}</span>
@@ -337,6 +534,30 @@ function BudgetTracker() {
               </div>
             </div>
           </section>
+
+          {selectedCandidate && (
+            <div className="sankey-overlay" onClick={() => setSelectedCandidate(null)}>
+              <div className="sankey-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="sankey-modal-header">
+                  <span><strong className="cap">{selectedCandidate.type}</strong> — {selectedCandidate.confidence} (score {selectedCandidate.score})</span>
+                  <button onClick={() => setSelectedCandidate(null)} type="button">✕</button>
+                </div>
+                <SankeyViz candidate={selectedCandidate} allRows={rows} allYears={years} />
+                <p className="data-note" style={{ marginTop: 12 }}>{selectedCandidate.reason}</p>
+                {selectedCandidate.evidence && selectedCandidate.evidence.length > 0 && (
+                  <ul className="sankey-evidence">
+                    {selectedCandidate.evidence.map((item) => (
+                      <li key={`${selectedCandidate.id}-${item.kind}-${item.detail}`}>
+                        <span>{item.kind.replace(/_/g, ' ')}</span>
+                        {item.detail}
+                        {typeof item.score === 'number' ? ` (${item.score})` : ''}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          )}
         </>
       ) : (
         <>
