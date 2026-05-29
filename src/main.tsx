@@ -406,6 +406,33 @@ function BudgetTracker() {
 
   return (
     <>
+      <details className="about-info">
+        <summary>About this tracker</summary>
+        <p>
+          <strong>Scottish Budget Tracker</strong> — an independent tool for exploring
+          published Scottish Government budget data across multiple years. Not affiliated
+          with, endorsed by, or produced by the Scottish Government.
+        </p>
+        <p>
+          <strong>Data source:</strong> Scottish Government Level 4 budget supporting
+          documents (<a href="https://www.gov.scot/publications/scottish-budget-2022-23/documents/" target="_blank" rel="noopener">2022-23</a>,
+          <a href="https://www.gov.scot/publications/scottish-budget-2023-24/documents/" target="_blank" rel="noopener">2023-24</a>,
+          <a href="https://www.gov.scot/publications/scottish-budget-2024-25/documents/" target="_blank" rel="noopener">2024-25</a>,
+          <a href="https://www.gov.scot/publications/scottish-budget-2025-2026/documents/" target="_blank" rel="noopener">2025-26</a>).
+          Provisional outturn data from the
+          <a href="https://www.gov.scot/publications/2024-25-provisional-outturn-briefing-note-24-june-2025/" target="_blank" rel="noopener">2024-25 provisional outturn briefing note</a>.
+        </p>
+        <p>
+          <strong>Disclaimer:</strong> Budget line flows between years are heuristic
+          suggestions, not official mappings. Cross-year comparisons should be treated
+          as indicative. Always verify against the original source documents.
+        </p>
+        <p>
+          <strong>Code:</strong> Open source on
+          <a href="https://github.com/ruchirlives/scottish-budget-tracker" target="_blank" rel="noopener">GitHub</a>.
+          Built with React, TypeScript, Vite, Recharts, and read-excel-file.
+        </p>
+      </details>
       <div className="subtabs" role="tablist" aria-label="Budget mode">
         <button className={budgetMode === 'explore' ? 'active' : ''} onClick={() => setBudgetMode('explore')} type="button">Explore lines</button>
         <button className={budgetMode === 'flows' ? 'active' : ''} onClick={() => setBudgetMode('flows')} type="button">Flow model</button>
