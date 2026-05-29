@@ -38,7 +38,7 @@ npm run build
 
 - Source data is Crown copyright and published under the Open Government Licence unless otherwise stated on gov.scot.
 - This repository includes official `.xlsx` source workbooks and derived JSON files. See `DATA_NOTICE.md` for OGL v3.0 attribution and source links.
-- App code is copyright Ruchir Lives and licensed under the MIT License in `LICENSE`. See `NOTICE.md`.
+- App code is copyright Ruchir Shah and licensed under the MIT License in `LICENSE`. See `NOTICE.md`.
 - The first parser is intentionally broad because workbook layouts vary by year. Tighten `scripts/fetch-budget-data.ts` as the visual model settles.
 - Keep Budget Tracker and Outturn as separate views unless a reliable official budget-line outturn mapping becomes available.
 - Level 4 budget ingestion currently covers 2022-23 onward. The 2021-22 supporting workbook available on gov.scot is an aggregate Annex C table rather than the same Level 4 workbook structure.

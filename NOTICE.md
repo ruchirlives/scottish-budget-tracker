@@ -2,7 +2,7 @@
 
 Scottish Budget Tracker app code:
 
-Copyright (c) 2026 Ruchir Lives
+Copyright (c) 2026 Ruchir Shah
 
 The app source code is licensed under the MIT License. See `LICENSE`.
 
