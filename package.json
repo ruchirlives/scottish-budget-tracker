@@ -1,0 +1,32 @@
+{
+  "name": "scottish-budget-tracker",
+  "private": true,
+  "version": "0.0.0",
+  "author": "Ruchir Lives",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "fetch:data": "tsx scripts/fetch-budget-data.ts",
+    "generate:flows": "tsx scripts/generate-budget-flows.ts",
+    "generate:flow-candidates": "tsx scripts/generate-budget-flow-candidates.ts",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.2",
+    "tsx": "^4.22.3",
+    "typescript": "~6.0.2",
+    "vite": "^8.0.12"
+  },
+  "dependencies": {
+    "lucide-react": "^1.17.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "read-excel-file": "^9.0.10",
+    "recharts": "^3.8.1"
+  }
+}

@@ -2,7 +2,9 @@
 
 ## Project
 
-This repo is a Node.js app for processing and visualising Scottish Government Budget data across multiple years.
+This repo is a Node.js app for processing and visualising published Scottish budget data across multiple years.
+
+This is an independent project. It is not affiliated with, endorsed by, or produced by the Scottish Government. Keep public-facing product names as "Scottish Budget Tracker" rather than "Scottish Government Budget Tracker".
 
 The app currently uses:
 

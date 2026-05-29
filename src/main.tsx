@@ -578,8 +578,9 @@ function App() {
     <main>
       <header className="app-header">
         <div>
-          <p className="eyebrow">Scottish Government Budget Tracker</p>
+          <p className="eyebrow">Scottish Budget Tracker</p>
           <h1>Compare planned budgets with broad outturn reporting</h1>
+          <p className="disclaimer">Independent project using published Scottish Government data. Not affiliated with or endorsed by the Scottish Government.</p>
         </div>
         <a className="source-link" href={activeTab === 'budget' ? 'https://www.gov.scot/publications/scottish-budget-2025-2026/documents/' : outturnData.sourceUrl} target="_blank">
           <Database size={18} />

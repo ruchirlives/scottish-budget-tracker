@@ -1,0 +1,31 @@
+{
+  "year": "2024-25",
+  "sourceTitle": "Scottish Budget - provisional outturn 2024-2025: briefing note - 24 June 2025",
+  "sourceUrl": "https://www.gov.scot/publications/2024-25-provisional-outturn-briefing-note-24-june-2025/",
+  "summary": {
+    "fiscalBudget": 52700,
+    "provisionalFiscalOutturn": 52100,
+    "remainingFunding": 557,
+    "unit": "GBP million"
+  },
+  "variances": [
+    { "portfolio": "Constitution, External Affairs and Culture", "resource": 0, "capital": -3, "financialTransactions": -1, "totalExcludingNonCash": -4, "nonCash": -2, "total": -6 },
+    { "portfolio": "Deputy First Minister, Economy and Gaelic", "resource": -71, "capital": -20, "financialTransactions": -26, "totalExcludingNonCash": -117, "nonCash": 11, "total": -106 },
+    { "portfolio": "Education and Skills", "resource": -11, "capital": -1, "financialTransactions": 0, "totalExcludingNonCash": -12, "nonCash": -18, "total": -30 },
+    { "portfolio": "Finance and Local Government", "resource": -321, "capital": -9, "financialTransactions": 0, "totalExcludingNonCash": -330, "nonCash": 6, "total": -324 },
+    { "portfolio": "Justice and Home Affairs", "resource": -6, "capital": 6, "financialTransactions": 0, "totalExcludingNonCash": 0, "nonCash": 0, "total": 0 },
+    { "portfolio": "Net Zero and Energy", "resource": -15, "capital": -45, "financialTransactions": 10, "totalExcludingNonCash": -50, "nonCash": 0, "total": -50 },
+    { "portfolio": "NHS Recovery, Health & Social Care", "resource": 22, "capital": -44, "financialTransactions": 0, "totalExcludingNonCash": -22, "nonCash": 11, "total": -11 },
+    { "portfolio": "Rural Affairs, Land Reform and Islands", "resource": -22, "capital": -10, "financialTransactions": 0, "totalExcludingNonCash": -32, "nonCash": -1, "total": -33 },
+    { "portfolio": "Social Justice", "resource": -73, "capital": -24, "financialTransactions": -12, "totalExcludingNonCash": -109, "nonCash": -20, "total": -129 },
+    { "portfolio": "Transport", "resource": -6, "capital": -72, "financialTransactions": 0, "totalExcludingNonCash": -78, "nonCash": -3, "total": -81 },
+    { "portfolio": "Crown Office and Procurator Fiscal Service", "resource": -3, "capital": 0, "financialTransactions": 0, "totalExcludingNonCash": -3, "nonCash": 0, "total": -3 },
+    { "portfolio": "Total Scottish Government", "resource": -506, "capital": -222, "financialTransactions": -29, "totalExcludingNonCash": -757, "nonCash": -16, "total": -773 },
+    { "portfolio": "Other Bodies within the Scottish Administration", "resource": -5, "capital": 2, "financialTransactions": 0, "totalExcludingNonCash": -3, "nonCash": 0, "total": -3 },
+    { "portfolio": "Total Scottish Administration", "resource": -511, "capital": -220, "financialTransactions": -29, "totalExcludingNonCash": -760, "nonCash": -16, "total": -776 },
+    { "portfolio": "Other Bodies funded directly from the Scottish Budget", "resource": -2, "capital": 0, "financialTransactions": 0, "totalExcludingNonCash": -2, "nonCash": 0, "total": -2 },
+    { "portfolio": "Total Scottish Budget", "resource": -513, "capital": -220, "financialTransactions": -29, "totalExcludingNonCash": -762, "nonCash": -16, "total": -778 },
+    { "portfolio": "Funding Adjustments", "resource": 12, "capital": 189, "financialTransactions": 4, "totalExcludingNonCash": 205, "nonCash": -722, "total": -517 },
+    { "portfolio": "TOTAL", "resource": -501, "capital": -31, "financialTransactions": -25, "totalExcludingNonCash": -557, "nonCash": -738, "total": -1295 }
+  ]
+}
