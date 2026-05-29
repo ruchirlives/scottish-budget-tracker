@@ -19,4 +19,5 @@ Source pages:
 - https://www.gov.scot/publications/scottish-budget-2025-2026/documents/
 - https://www.gov.scot/publications/2024-25-provisional-outturn-briefing-note-24-june-2025/
 
-The app code is licensed separately under the MIT License in `LICENSE`.
+The app code is licensed separately under Creative Commons
+Attribution-NonCommercial 4.0 International in `LICENSE`.
