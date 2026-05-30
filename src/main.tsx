@@ -1244,6 +1244,8 @@ function CanvasTrackerInner() {
             selectionKeyCode={['Shift']}
             selectionOnDrag
             selectionMode={SelectionMode.Partial}
+            minZoom={0.08}
+            maxZoom={2.5}
             fitView
           >
             <Background color="#d8dee8" gap={18} />
