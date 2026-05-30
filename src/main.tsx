@@ -105,13 +105,14 @@ type CanvasStorage = {
   edges: Edge[];
 };
 
-type AnimationAction = 'highlight' | 'unhighlight' | 'show' | 'hide' | 'annotate' | 'unannotate' | 'move';
+type AnimationAction = 'highlight' | 'unhighlight' | 'show' | 'hide' | 'annotate' | 'unannotate' | 'move' | 'zoom' | 'pan' | 'text' | 'panToNode';
+const viewportActions = new Set(['zoom', 'pan', 'panToNode', 'text']);
 
 type AnimationStep = {
   delay: number;
   action: AnimationAction;
-  nodeId: string;
-  value?: string | string[] | { x: number; y: number };
+  nodeId?: string;
+  value?: string | string[] | number | { x: number; y: number };
 };
 
 type AnimationScript = {
@@ -470,13 +471,33 @@ function readAnimScripts(): AnimationScript[] {
 }
 
 const defaultDemoScript: AnimationScript = {
-  id: 'demo-highlight-key-years',
-  name: 'Demo: Highlight key years',
+  id: 'nature-investment-story',
+  name: 'Nature Investment Story',
   steps: [
-    { delay: 500, action: 'highlight', nodeId: '', value: ['2024-25'] },
-    { delay: 2000, action: 'unhighlight', nodeId: '' },
-    { delay: 500, action: 'highlight', nodeId: '', value: ['2025-26'] },
-    { delay: 2000, action: 'unhighlight', nodeId: '' },
+    { delay: 1000, action: 'text', value: 'Nature Investment in the Scottish Budget' },
+    { delay: 2500, action: 'text', value: '' },
+    { delay: 300, action: 'panToNode', nodeId: 'line:Net Zero and Energy:NatureScot Resource - Staff costs', value: 1.2 },
+    { delay: 500, action: 'highlight', nodeId: 'line:Net Zero and Energy:NatureScot Resource - Staff costs', value: ['2024-25', '2025-26'] },
+    { delay: 2000, action: 'unhighlight', nodeId: 'line:Net Zero and Energy:NatureScot Resource - Staff costs' },
+    { delay: 500, action: 'panToNode', nodeId: 'line:Net Zero and Energy:Nature Restoration', value: 1.2 },
+    { delay: 300, action: 'highlight', nodeId: 'line:Net Zero and Energy:Nature Restoration', value: ['2024-25', '2025-26'] },
+    { delay: 2000, action: 'unhighlight', nodeId: 'line:Net Zero and Energy:Nature Restoration' },
+    { delay: 500, action: 'panToNode', nodeId: 'aggregation:1780134564103', value: 1 },
+    { delay: 300, action: 'annotate', nodeId: 'aggregation:1780134564103', value: 'NatureScot Total: £92.4M' },
+    { delay: 2500, action: 'unannotate', nodeId: 'aggregation:1780134564103' },
+    { delay: 500, action: 'panToNode', nodeId: 'line:Rural Affairs, Land Reform and Islands:Peatlands', value: 1 },
+    { delay: 300, action: 'highlight', nodeId: 'line:Rural Affairs, Land Reform and Islands:Peatlands', value: ['2024-25', '2025-26'] },
+    { delay: 2000, action: 'unhighlight', nodeId: 'line:Rural Affairs, Land Reform and Islands:Peatlands' },
+    { delay: 500, action: 'panToNode', nodeId: 'line:Rural Affairs, Land Reform and Islands:Woodland Grants', value: 1 },
+    { delay: 300, action: 'highlight', nodeId: 'line:Rural Affairs, Land Reform and Islands:Woodland Grants', value: ['2024-25', '2025-26'] },
+    { delay: 2000, action: 'unhighlight', nodeId: 'line:Rural Affairs, Land Reform and Islands:Woodland Grants' },
+    { delay: 500, action: 'panToNode', nodeId: 'aggregation:1780134564996', value: 1 },
+    { delay: 300, action: 'annotate', nodeId: 'aggregation:1780134564996', value: 'Rural Nature Total: £108.2M → £118.4M' },
+    { delay: 2500, action: 'unannotate', nodeId: 'aggregation:1780134564996' },
+    { delay: 500, action: 'panToNode', nodeId: 'aggregation:1780134579396', value: 0.9 },
+    { delay: 300, action: 'highlight', nodeId: 'aggregation:1780134579396', value: ['2022-23', '2023-24', '2024-25', '2025-26'] },
+    { delay: 500, action: 'text', value: 'Total Nature Investment: £200.6M → £205.3M' },
+    { delay: 2500, action: 'text', value: '7.6x increase from 2023-24 baseline' },
   ],
 };
 
@@ -1153,7 +1174,7 @@ function CanvasTracker() {
 }
 
 function CanvasTrackerInner() {
-  const { screenToFlowPosition, fitView } = useReactFlow();
+  const { screenToFlowPosition, fitView, setViewport, getViewport, setCenter } = useReactFlow();
   const initialCanvas = React.useMemo(readCanvasStorage, []);
   const canvasMcpBaseUrl = React.useMemo(
     () => (import.meta.env.VITE_CANVAS_MCP_URL ?? '').replace(/\/$/, ''),
@@ -1169,6 +1190,7 @@ function CanvasTrackerInner() {
   const [renamingNodeId, setRenamingNodeId] = React.useState<string | null>(null);
   const [editingRuleNodeId, setEditingRuleNodeId] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+  const flowCanvasRef = React.useRef<HTMLDivElement | null>(null);
   const [animScripts, setAnimScripts] = React.useState<AnimationScript[]>(() => {
     const saved = readAnimScripts();
     return saved.length > 0 ? saved : [defaultDemoScript];
@@ -1177,9 +1199,11 @@ function CanvasTrackerInner() {
   const [isAnimating, setIsAnimating] = React.useState(false);
   const [showAnimEditor, setShowAnimEditor] = React.useState(false);
   const [animStepIndex, setAnimStepIndex] = React.useState(-1);
+  const [animOverlayText, setAnimOverlayText] = React.useState('');
   const animTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const animStopRef = React.useRef(false);
   const animSnapshotsRef = React.useRef<Array<{ nodeId: string; data: CanvasNode['data']; position: { x: number; y: number }; hidden?: boolean }>>([]);
+  const initialViewportRef = React.useRef<{ x: number; y: number; zoom: number } | null>(null);
 
   React.useEffect(() => {
     try {
@@ -1222,6 +1246,47 @@ function CanvasTrackerInner() {
   }, [canvasMcpBaseUrl]);
 
   const applyAnimStep = React.useCallback((step: AnimationStep) => {
+    if (step.action === 'zoom') {
+      const zoom = step.value as number | undefined;
+      if (typeof zoom === 'number') {
+        const vp = getViewport();
+        const el = flowCanvasRef.current;
+        if (el) {
+          const { width, height } = el.getBoundingClientRect();
+          const flowCX = (width / 2 - vp.x) / vp.zoom;
+          const flowCY = (height / 2 - vp.y) / vp.zoom;
+          setViewport({ x: width / 2 - flowCX * zoom, y: height / 2 - flowCY * zoom, zoom });
+        } else {
+          setViewport({ x: vp.x, y: vp.y, zoom });
+        }
+      }
+      setAnimStepIndex((prev) => prev + 1);
+      return;
+    }
+    if (step.action === 'pan') {
+      const pos = step.value as { x: number; y: number } | undefined;
+      if (pos && typeof pos.x === 'number' && typeof pos.y === 'number') {
+        setViewport({ x: pos.x, y: pos.y, zoom: getViewport().zoom });
+      }
+      setAnimStepIndex((prev) => prev + 1);
+      return;
+    }
+    if (step.action === 'text') {
+      setAnimOverlayText(String(step.value ?? ''));
+      setAnimStepIndex((prev) => prev + 1);
+      return;
+    }
+    if (step.action === 'panToNode') {
+      const target = nodesRef.current.find((n) => n.id === step.nodeId);
+      if (target) {
+        const cx = target.position.x + ((target.measured?.width ?? 200) / 2);
+        const cy = target.position.y + ((target.measured?.height ?? 170) / 2);
+        const zoom = typeof step.value === 'number' ? step.value : getViewport().zoom;
+        setCenter(cx, cy, { zoom, duration: 500 });
+      }
+      setAnimStepIndex((prev) => prev + 1);
+      return;
+    }
     animSnapshotsRef.current = animSnapshotsRef.current.slice(0, animStepIndex + 1);
     setNodes((nds) => {
       const target = nds.find((n) => n.id === step.nodeId);
@@ -1249,12 +1314,12 @@ function CanvasTrackerInner() {
       });
     });
     setAnimStepIndex((prev) => prev + 1);
-  }, [setNodes, animStepIndex]);
+  }, [setNodes, animStepIndex, setViewport, getViewport, setCenter]);
 
   const stepForward = React.useCallback(() => {
     const script = animScripts.find((s) => s.id === selectedAnimScriptId);
     if (!script) return;
-    const steps = script.steps.filter((s) => s.nodeId);
+    const steps = script.steps.filter((s) => s.nodeId || viewportActions.has(s.action));
     if (animStepIndex >= steps.length - 1) return;
     applyAnimStep(steps[animStepIndex + 1]);
   }, [animScripts, selectedAnimScriptId, animStepIndex, applyAnimStep]);
@@ -1289,7 +1354,12 @@ function CanvasTrackerInner() {
     animSnapshotsRef.current = [];
     setAnimStepIndex(-1);
     setIsAnimating(false);
-  }, [animStepIndex, setNodes]);
+    setAnimOverlayText('');
+    if (initialViewportRef.current) {
+      setViewport(initialViewportRef.current);
+      initialViewportRef.current = null;
+    }
+  }, [animStepIndex, setNodes, setViewport]);
 
   const stopAnimation = React.useCallback(() => {
     animStopRef.current = true;
@@ -1305,10 +1375,11 @@ function CanvasTrackerInner() {
     if (!script || script.steps.length === 0) return;
 
     resetAnimation();
+    initialViewportRef.current = getViewport();
     animStopRef.current = false;
     setIsAnimating(true);
 
-    const validSteps = script.steps.filter((s) => s.nodeId);
+    const validSteps = script.steps.filter((s) => s.nodeId || viewportActions.has(s.action));
 
     let index = 0;
     const runStep = () => {
@@ -1336,7 +1407,7 @@ function CanvasTrackerInner() {
   resetAnimationRef.current = resetAnimation;
 
   React.useEffect(() => {
-    if (!canvasMcpBaseUrl) return;
+    if (!canvasMcpBaseUrl && import.meta.env.PROD) return;
     window.fetch(`${canvasMcpBaseUrl}/canvas/scripts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1490,7 +1561,7 @@ function CanvasTrackerInner() {
       }
     }
 
-    if (command.tool === 'anim_save_script') {
+    if (command.tool === 'canvas_anim_save_script') {
       const scriptId = String(args.id ?? '');
       const scriptName = String(args.name ?? 'New script');
       const steps = Array.isArray(args.steps) ? args.steps : [];
@@ -1505,7 +1576,7 @@ function CanvasTrackerInner() {
       if (scriptId) setSelectedAnimScriptId(scriptId);
     }
 
-    if (command.tool === 'anim_delete_script') {
+    if (command.tool === 'canvas_anim_delete_script') {
       const scriptId = String(args.id ?? '');
       setAnimScripts((prev) => {
         const updated = prev.filter((s) => s.id !== scriptId);
@@ -1515,25 +1586,25 @@ function CanvasTrackerInner() {
       setSelectedAnimScriptId((prev) => prev === scriptId ? '' : prev);
     }
 
-    if (command.tool === 'anim_play') {
+    if (command.tool === 'canvas_anim_play') {
       const scriptId = String(args.id ?? '');
       if (scriptId) setSelectedAnimScriptId(scriptId);
       setTimeout(() => runAnimationRef.current?.(), 50);
     }
 
-    if (command.tool === 'anim_stop') {
+    if (command.tool === 'canvas_anim_stop') {
       stopAnimationRef.current?.();
     }
 
-    if (command.tool === 'anim_step_forward') {
+    if (command.tool === 'canvas_anim_step_forward') {
       stepForwardRef.current?.();
     }
 
-    if (command.tool === 'anim_step_backward') {
+    if (command.tool === 'canvas_anim_step_backward') {
       stepBackwardRef.current?.();
     }
 
-    if (command.tool === 'anim_reset') {
+    if (command.tool === 'canvas_anim_reset') {
       resetAnimationRef.current?.();
     }
 
@@ -1566,7 +1637,10 @@ function CanvasTrackerInner() {
         }
         if (payload.commands?.length) {
           payload.commands.forEach(applyCanvasMcpCommand);
-          window.setTimeout(() => fitView({ padding: 0.18, duration: 250 }), 0);
+          const hasNonAnim = payload.commands.some((c) => !c.tool.startsWith('canvas_anim_'));
+          if (hasNonAnim) {
+            window.setTimeout(() => fitView({ padding: 0.18, duration: 250 }), 0);
+          }
         }
       } catch {
         // The app should remain usable when the MCP server is not running.
@@ -1914,14 +1988,14 @@ function CanvasTrackerInner() {
             <button className="secondary" onClick={stepForward} type="button" title="Next step">
               ▶
             </button>
-            <span className="step-counter">{animStepIndex + 1}/{animScripts.find((s) => s.id === selectedAnimScriptId)?.steps.filter((s) => s.nodeId).length ?? 0}</span>
+            <span className="step-counter">{animStepIndex + 1}/{animScripts.find((s) => s.id === selectedAnimScriptId)?.steps.filter((s) => s.nodeId || viewportActions.has(s.action)).length ?? 0}</span>
             <button className="secondary" onClick={resetAnimation} type="button" title="Reset animation">Reset</button>
             <button className="secondary" onClick={() => setShowAnimEditor(true)} type="button" title="Edit scripts" disabled={isAnimating}>
               Edit
             </button>
           </div>
         </div>
-        <div className="flow-canvas" onDragOver={handleDragOver} onDrop={handleDrop}>
+        <div className="flow-canvas" ref={flowCanvasRef} onDragOver={handleDragOver} onDrop={handleDrop}>
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -1948,6 +2022,25 @@ function CanvasTrackerInner() {
             <Background color="#d8dee8" gap={18} />
             <MiniMap pannable zoomable />
             <Controls />
+            {animOverlayText && (
+              <div style={{
+                position: 'absolute',
+                top: 16,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 100,
+                background: 'rgba(0,0,0,0.75)',
+                color: '#fff',
+                padding: '8px 24px',
+                borderRadius: 8,
+                fontSize: 20,
+                fontWeight: 600,
+                pointerEvents: 'none',
+                whiteSpace: 'nowrap',
+              }}>
+                {animOverlayText}
+              </div>
+            )}
           </ReactFlow>
         </div>
       </section>

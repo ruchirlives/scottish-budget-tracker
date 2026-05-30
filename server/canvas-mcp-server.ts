@@ -175,7 +175,7 @@ const tools = [
   },
   {
     name: 'canvas_anim_save_script',
-    description: 'Create or overwrite an animation script. Returns the script ID.',
+    description: 'Create or overwrite an animation script. Supports node actions (highlight, show, hide, annotate, move, panToNode) and viewport actions (zoom, pan, text). Returns the script ID.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -187,9 +187,9 @@ const tools = [
             type: 'object',
             properties: {
               delay: { type: 'number', description: 'Delay in ms before this step executes.' },
-              action: { type: 'string', enum: ['highlight', 'unhighlight', 'show', 'hide', 'annotate', 'unannotate', 'move'] },
-              nodeId: { type: 'string' },
-              value: { description: 'Value: string[] for highlight, string for annotate, {x,y} for move.' },
+              action: { type: 'string', enum: ['highlight', 'unhighlight', 'show', 'hide', 'annotate', 'unannotate', 'move', 'zoom', 'pan', 'text', 'panToNode'] },
+              nodeId: { type: 'string', description: 'Target node ID. Required for node actions (highlight, show, hide, annotate, move, panToNode). Can be empty for viewport actions (zoom, pan, text).' },
+              value: { description: 'Value varies by action: string[] for highlight, string for annotate/text, {x,y} for move/pan, number for zoom, and number (zoom level) for panToNode.' },
             },
           },
         },
