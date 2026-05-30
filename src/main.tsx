@@ -1111,6 +1111,7 @@ function CanvasTrackerInner() {
   const { screenToFlowPosition } = useReactFlow();
   const initialCanvas = React.useMemo(readCanvasStorage, []);
   const [query, setQuery] = React.useState('');
+  const [parentFilter, setParentFilter] = React.useState<string | null>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState<CanvasNode>(refreshBudgetLineNodeData(initialCanvas.nodes));
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialCanvas.edges);
   const [renamingNodeId, setRenamingNodeId] = React.useState<string | null>(null);
@@ -1146,9 +1147,10 @@ function CanvasTrackerInner() {
         };
       })
       .filter((line) => `${line.canonicalArea} ${line.portfolio}`.toLowerCase().includes(query.toLowerCase()))
+      .filter((line) => !parentFilter || line.canonicalArea === parentFilter)
       .sort((a, b) => latestSeriesAmount(b.series) - latestSeriesAmount(a.series))
       .slice(0, 80)
-  ), [query]);
+  ), [parentFilter, query]);
 
   React.useEffect(() => {
     setNodes((currentNodes) => recomputeAggregationNodes(currentNodes, edges));
@@ -1358,6 +1360,12 @@ function CanvasTrackerInner() {
           <Search size={18} />
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search budget lines" />
         </label>
+        {parentFilter ? (
+          <button className="parent-filter" onClick={() => setParentFilter(null)} type="button">
+            <span>{parentFilter}</span>
+            <X size={16} />
+          </button>
+        ) : null}
         <div className="budget-line-palette">
           {availableLines.map((line) => (
             <button draggable key={line.id} onDragStart={(event) => handleDragStart(event, line)} type="button">
@@ -1406,6 +1414,10 @@ function CanvasTrackerInner() {
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             onNodeDoubleClick={(_event, node) => {
+              if (node.type === 'budgetLine') {
+                setParentFilter((node.data as BudgetLineNodeData).canonicalArea);
+                setQuery('');
+              }
               if (node.type === 'aggregation') setRenamingNodeId(node.id);
               if (node.type === 'ruleAggregation') setEditingRuleNodeId(node.id);
             }}

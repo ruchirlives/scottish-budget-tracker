@@ -606,6 +606,26 @@ th {
   overflow: auto;
 }
 
+.parent-filter {
+  align-items: center;
+  background: #eef5ff;
+  border: 1px solid #9dbcf8;
+  border-radius: 6px;
+  color: #1f4f9a;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  text-align: left;
+  width: 100%;
+}
+
+.parent-filter span {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
 .budget-line-palette button {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
