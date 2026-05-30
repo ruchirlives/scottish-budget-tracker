@@ -7,6 +7,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "mcp": "tsx server/canvas-mcp-server.ts",
     "fetch:data": "tsx scripts/fetch-budget-data.ts",
     "generate:flows": "tsx scripts/generate-budget-flows.ts",
     "generate:flow-candidates": "tsx scripts/generate-budget-flow-candidates.ts",

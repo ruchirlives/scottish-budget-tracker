@@ -1,5 +1,31 @@
 # Scottish Budget Tracker
 
+## Canvas MCP Server
+
+The React canvas can be controlled by a local remote-type MCP HTTP server. This is a local/private automation feature, not part of the GitHub Pages deployment.
+
+To use MCP, clone the repo and run both the MCP server and the Vite app locally:
+
+```powershell
+npm install
+npm run mcp
+npm run dev
+```
+
+Then open the local app, usually:
+
+```text
+http://localhost:5173
+```
+
+The MCP endpoint is:
+
+```text
+http://127.0.0.1:8787/mcp
+```
+
+The GitHub Pages version is a static app. It can be used normally, but it cannot run the MCP server. Users with only the GitHub Pages link cannot use MCP unless they also run an MCP server locally or connect to a deliberately hosted and secured MCP backend.
+
 Independent Node.js app for processing and visualising published Scottish budget data across multiple years.
 
 This is an independent project. It is not affiliated with, endorsed by, or produced by the Scottish Government.

@@ -27,6 +27,7 @@ npm install
 npm run fetch:data
 npm run generate:flows
 npm run generate:flow-candidates
+npm run mcp
 npm run dev
 npm run build
 npm audit --omit=dev
@@ -86,6 +87,7 @@ When adding new years, update `scripts/sources.ts` and verify the parser still p
 - Keep the dashboard usable on desktop and mobile.
 - Run `npm run build` before handing off changes.
 - Run `npm audit --omit=dev` after dependency changes.
+- Run `npm run mcp` to start the local remote-type MCP HTTP server for canvas automation. The endpoint is `http://127.0.0.1:8787/mcp`; Vite proxies `/mcp`, `/canvas`, and `/health` during development.
 
 ## Repo Hygiene
 

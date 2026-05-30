@@ -1108,15 +1108,205 @@ function CanvasTracker() {
 }
 
 function CanvasTrackerInner() {
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, fitView } = useReactFlow();
   const initialCanvas = React.useMemo(readCanvasStorage, []);
+  const canvasMcpBaseUrl = React.useMemo(
+    () => (import.meta.env.VITE_CANVAS_MCP_URL ?? '').replace(/\/$/, ''),
+    [],
+  );
   const [query, setQuery] = React.useState('');
   const [parentFilter, setParentFilter] = React.useState<string | null>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState<CanvasNode>(refreshBudgetLineNodeData(initialCanvas.nodes));
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialCanvas.edges);
+  const nodesRef = React.useRef<CanvasNode[]>(nodes);
+  const edgesRef = React.useRef<Edge[]>(edges);
+  const mcpCursorRef = React.useRef(0);
   const [renamingNodeId, setRenamingNodeId] = React.useState<string | null>(null);
   const [editingRuleNodeId, setEditingRuleNodeId] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  React.useEffect(() => {
+    nodesRef.current = nodes;
+  }, [nodes]);
+
+  React.useEffect(() => {
+    edgesRef.current = edges;
+  }, [edges]);
+
+  const createCanvasEdge = React.useCallback((source: string, target: string): Edge => ({
+    id: `edge:${source}:${target}:${Date.now()}`,
+    source,
+    target,
+    animated: true,
+    style: { stroke: '#f97316', strokeWidth: 2.5 },
+  }), []);
+
+  const postCanvasMcpState = React.useCallback((nextNodes: CanvasNode[], nextEdges: Edge[]) => {
+    if (!canvasMcpBaseUrl && import.meta.env.PROD) {
+      return;
+    }
+
+    window.fetch(`${canvasMcpBaseUrl}/canvas/state`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nodes: nextNodes,
+        edges: nextEdges,
+        updatedAt: new Date().toISOString(),
+      }),
+    }).catch(() => {
+      // The canvas works without the MCP server; ignore transient disconnects.
+    });
+  }, [canvasMcpBaseUrl]);
+
+  const applyCanvasMcpCommand = React.useCallback((command: { tool: string; arguments?: Record<string, unknown> }) => {
+    const args = command.arguments ?? {};
+    let nextNodes = nodesRef.current;
+    let nextEdges = edgesRef.current;
+
+    const requestedPosition = {
+      x: typeof args.x === 'number' ? args.x : 120 + nextNodes.length * 32,
+      y: typeof args.y === 'number' ? args.y : 120 + nextNodes.length * 24,
+    };
+
+    if (command.tool === 'canvas_clear') {
+      nextNodes = [];
+      nextEdges = [];
+      window.localStorage.removeItem('scottish-budget-tracker:canvas:v1');
+    }
+
+    if (command.tool === 'canvas_add_budget_line') {
+      const canonicalArea = String(args.canonicalArea ?? '');
+      const portfolio = String(args.portfolio ?? '');
+      if (canonicalArea && portfolio) {
+        const id = String(args.id ?? `line:${canonicalArea}:${portfolio}`);
+        const existing = nextNodes.find((node) => node.id === id);
+        if (!existing) {
+          nextNodes = [
+            ...nextNodes,
+            {
+              id,
+              type: 'budgetLine',
+              position: requestedPosition,
+              data: {
+                canonicalArea,
+                portfolio,
+                series: seriesForBudgetLine(canonicalArea, portfolio),
+              },
+            } as CanvasNode,
+          ];
+        }
+      }
+    }
+
+    if (command.tool === 'canvas_add_aggregation') {
+      const id = String(args.id ?? `aggregation:${Date.now()}`);
+      const inputNodeIds = Array.isArray(args.inputNodeIds) ? args.inputNodeIds.map(String) : [];
+      nextNodes = [
+        ...nextNodes,
+        {
+          id,
+          type: 'aggregation',
+          position: requestedPosition,
+          data: {
+            label: String(args.label ?? 'Aggregation'),
+            series: [],
+          },
+        } as CanvasNode,
+      ];
+      nextEdges = [
+        ...nextEdges,
+        ...inputNodeIds
+          .filter((source) => source !== id && nextNodes.some((node) => node.id === source))
+          .map((source) => createCanvasEdge(source, id)),
+      ];
+    }
+
+    if (command.tool === 'canvas_add_rule') {
+      const id = String(args.id ?? `rule:${Date.now()}`);
+      const conditions = Array.isArray(args.conditions) ? args.conditions : [];
+      nextNodes = [
+        ...nextNodes,
+        {
+          id,
+          type: 'ruleAggregation',
+          position: requestedPosition,
+          data: {
+            label: String(args.label ?? 'Rule Aggregation'),
+            conditions: conditions as RuleCondition[],
+            series: [],
+          },
+        } as CanvasNode,
+      ];
+    }
+
+    if (command.tool === 'canvas_connect') {
+      const source = String(args.source ?? '');
+      const target = String(args.target ?? '');
+      const sourceExists = nextNodes.some((node) => node.id === source);
+      const targetExists = nextNodes.some((node) => node.id === target);
+      const wouldDuplicate = nextEdges.some((edge) => edge.source === source && edge.target === target);
+      if (source && target && source !== target && sourceExists && targetExists && !wouldDuplicate && !hasCanvasPath(nextEdges, target, source)) {
+        nextEdges = [...nextEdges, createCanvasEdge(source, target)];
+      }
+    }
+
+    if (command.tool === 'canvas_rename_node') {
+      const id = String(args.id ?? '');
+      const label = String(args.label ?? '');
+      if (id && label) {
+        nextNodes = nextNodes.map((node) => (
+          node.id === id && (node.type === 'aggregation' || node.type === 'ruleAggregation')
+            ? { ...node, data: { ...node.data, label } }
+            : node
+        ));
+      }
+    }
+
+    nextNodes = recomputeAggregationNodes(nextNodes, nextEdges);
+    nodesRef.current = nextNodes;
+    edgesRef.current = nextEdges;
+    setNodes(nextNodes);
+    setEdges(nextEdges);
+    postCanvasMcpState(nextNodes, nextEdges);
+  }, [createCanvasEdge, postCanvasMcpState, setEdges, setNodes]);
+
+  React.useEffect(() => {
+    let stopped = false;
+    let inFlight = false;
+
+    const poll = async () => {
+      if (stopped || inFlight) {
+        return;
+      }
+      inFlight = true;
+      try {
+        const response = await window.fetch(`${canvasMcpBaseUrl}/canvas/commands?since=${mcpCursorRef.current}`);
+        if (!response.ok) {
+          return;
+        }
+        const payload = await response.json() as { cursor?: number; commands?: Array<{ tool: string; arguments?: Record<string, unknown> }> };
+        if (typeof payload.cursor === 'number') {
+          mcpCursorRef.current = payload.cursor;
+        }
+        if (payload.commands?.length) {
+          payload.commands.forEach(applyCanvasMcpCommand);
+          window.setTimeout(() => fitView({ padding: 0.18, duration: 250 }), 0);
+        }
+      } catch {
+        // The app should remain usable when the MCP server is not running.
+      } finally {
+        inFlight = false;
+      }
+    };
+
+    const timer = window.setInterval(poll, 900);
+    void poll();
+    return () => {
+      stopped = true;
+      window.clearInterval(timer);
+    };
+  }, [applyCanvasMcpCommand, canvasMcpBaseUrl, fitView]);
 
   const handleNodesChange = React.useCallback((changes: NodeChange<CanvasNode>[]) => {
     onNodesChange(changes);
