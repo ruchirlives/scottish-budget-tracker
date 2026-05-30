@@ -1220,10 +1220,19 @@ function CanvasTrackerInner() {
             onNodesChange={handleNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
+            onNodeClick={(event, node) => {
+              if (!event.ctrlKey && !event.metaKey) return;
+              event.preventDefault();
+              setNodes((currentNodes) => currentNodes.map((currentNode) => (
+                currentNode.id === node.id
+                  ? { ...currentNode, selected: !currentNode.selected }
+                  : currentNode
+              )));
+            }}
             onNodeDoubleClick={(_event, node) => {
               if (node.type === 'aggregation') setRenamingNodeId(node.id);
             }}
-            multiSelectionKeyCode={['Control', 'Meta']}
+            multiSelectionKeyCode={null}
             selectionKeyCode={['Shift']}
             fitView
           >
