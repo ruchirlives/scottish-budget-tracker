@@ -1555,7 +1555,7 @@ function RuleAggregationDialog({
               <select value={condition.operator} onChange={(event) => updateCondition(condition.id, { operator: event.target.value as RuleCondition['operator'] })}>
                 {ruleOperators.map((operator) => <option key={operator} value={operator}>{operator}</option>)}
               </select>
-              {ruleValueOptions[condition.field] ? (
+              {ruleValueOptions[condition.field] && condition.operator === 'equals' ? (
                 <select value={condition.value} onChange={(event) => updateCondition(condition.id, { value: event.target.value, operator: condition.operator === 'contains' ? 'equals' : condition.operator })}>
                   <option value="">Any {condition.field}</option>
                   {ruleValueOptions[condition.field]?.map((value) => <option key={value} value={value}>{value}</option>)}
