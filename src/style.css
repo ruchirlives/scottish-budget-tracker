@@ -653,6 +653,12 @@ th {
   padding: 8px 12px;
 }
 
+.canvas-toolbar button.secondary {
+  background: #ffffff;
+  border-color: #cfd8e3;
+  color: #334155;
+}
+
 .canvas-toolbar span {
   color: #64748b;
   font-size: 0.9rem;

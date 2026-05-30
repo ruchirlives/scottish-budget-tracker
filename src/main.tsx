@@ -73,6 +73,11 @@ type BudgetLineNode = Node<BudgetLineNodeData, 'budgetLine'>;
 type AggregationNode = Node<AggregationNodeData, 'aggregation'>;
 type CanvasNode = BudgetLineNode | AggregationNode;
 
+type CanvasStorage = {
+  nodes: CanvasNode[];
+  edges: Edge[];
+};
+
 type FlowLink = {
   year: string;
   canonicalArea: string;
@@ -137,6 +142,7 @@ const allBudgetLines: FlowCandidate[] = [
 ];
 const latestYear = years.at(-1) ?? '';
 const palette = ['#0065bd', '#2d7d46', '#d16b00', '#6f4bb2', '#c0392b', '#0f8b8d', '#5c6670'];
+const budgetCanvasStorageKey = 'scottish-budget-tracker:canvas:v1';
 
 function money(value: number) {
   return new Intl.NumberFormat('en-GB', {
@@ -362,6 +368,35 @@ function sumSeries(seriesList: Array<Array<{ year: string; amount: number }>>) {
 
 function latestSeriesAmount(series: Array<{ year: string; amount: number }>) {
   return series.at(-1)?.amount ?? 0;
+}
+
+function readCanvasStorage(): CanvasStorage {
+  if (typeof window === 'undefined') return { nodes: [], edges: [] };
+  try {
+    const raw = window.localStorage.getItem(budgetCanvasStorageKey);
+    if (!raw) return { nodes: [], edges: [] };
+    const parsed = JSON.parse(raw) as Partial<CanvasStorage>;
+    return {
+      nodes: Array.isArray(parsed.nodes) ? parsed.nodes : [],
+      edges: Array.isArray(parsed.edges) ? parsed.edges : [],
+    };
+  } catch {
+    return { nodes: [], edges: [] };
+  }
+}
+
+function refreshBudgetLineNodeData(nodes: CanvasNode[]) {
+  return nodes.map((node) => {
+    if (node.type !== 'budgetLine') return node;
+    const data = node.data as BudgetLineNodeData;
+    return {
+      ...node,
+      data: {
+        ...data,
+        series: seriesForBudgetLine(data.canonicalArea, data.label),
+      },
+    };
+  });
 }
 
 function hasCanvasPath(edges: Edge[], source: string, target: string) {
@@ -949,9 +984,10 @@ function CanvasTracker() {
 
 function CanvasTrackerInner() {
   const { screenToFlowPosition } = useReactFlow();
+  const initialCanvas = React.useMemo(readCanvasStorage, []);
   const [query, setQuery] = React.useState('');
-  const [nodes, setNodes, onNodesChange] = useNodesState<CanvasNode>([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<CanvasNode>(refreshBudgetLineNodeData(initialCanvas.nodes));
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialCanvas.edges);
   const [renamingNodeId, setRenamingNodeId] = React.useState<string | null>(null);
 
   const availableLines = React.useMemo(() => (
@@ -973,6 +1009,10 @@ function CanvasTrackerInner() {
   React.useEffect(() => {
     setNodes((currentNodes) => recomputeAggregationNodes(currentNodes, edges));
   }, [edges, setNodes]);
+
+  React.useEffect(() => {
+    window.localStorage.setItem(budgetCanvasStorageKey, JSON.stringify({ nodes, edges }));
+  }, [edges, nodes]);
 
   const onConnect = React.useCallback((connection: Connection) => {
     if (!connection.source || !connection.target || connection.source === connection.target) return;
@@ -1034,6 +1074,14 @@ function CanvasTrackerInner() {
     setNodes((currentNodes) => [...currentNodes, nextNode]);
   }
 
+  function clearCanvas() {
+    const shouldClear = window.confirm('Clear the saved canvas layout and aggregations?');
+    if (!shouldClear) return;
+    setNodes([]);
+    setEdges([]);
+    window.localStorage.removeItem(budgetCanvasStorageKey);
+  }
+
   function renameAggregation(value: string) {
     if (!renamingNodeId) return;
     const label = value.trim();
@@ -1080,6 +1128,9 @@ function CanvasTrackerInner() {
           <button onClick={addAggregation} type="button">
             <Plus size={18} />
             Aggregation
+          </button>
+          <button className="secondary" onClick={clearCanvas} type="button">
+            Clear canvas
           </button>
           <span>{nodes.length} nodes | {edges.length} links</span>
         </div>
