@@ -10,7 +10,7 @@ type CanvasCommand = {
 const port = Number(process.env.PORT ?? process.env.MCP_PORT ?? 8787);
 const commands: CanvasCommand[] = [];
 let lastCanvasState: unknown = null;
-const sseClients = new Set<ServerResponse>();
+const sseSessions = new Map<string, ServerResponse>();
 
 const tools = [
   {
@@ -127,6 +127,57 @@ function enqueue(name: string, args: Record<string, unknown> = {}) {
   return command;
 }
 
+function handleMcpMessage(body: {
+  id?: string | number;
+  method?: string;
+  params?: { name?: string; arguments?: Record<string, unknown> };
+}) {
+  if (body.method === 'initialize') {
+    return {
+      jsonrpc: '2.0',
+      id: body.id,
+      result: {
+        protocolVersion: '2024-11-05',
+        capabilities: { tools: {} },
+        serverInfo: { name: 'scottish-budget-tracker-canvas', version: '0.1.0' },
+      },
+    };
+  }
+
+  if (body.method === 'tools/list') {
+    return { jsonrpc: '2.0', id: body.id, result: { tools } };
+  }
+
+  if (body.method === 'tools/call') {
+    const name = body.params?.name;
+    const args = body.params?.arguments ?? {};
+    if (!name) {
+      return { jsonrpc: '2.0', id: body.id, error: { code: -32602, message: 'Tool name is required.' } };
+    }
+
+    if (name === 'canvas_get_state') {
+      return {
+        jsonrpc: '2.0',
+        id: body.id,
+        result: { content: [{ type: 'text', text: JSON.stringify(lastCanvasState ?? { nodes: [], edges: [] }, null, 2) }] },
+      };
+    }
+
+    const command = enqueue(name, args);
+    return {
+      jsonrpc: '2.0',
+      id: body.id,
+      result: { content: [{ type: 'text', text: `Queued ${command.tool} (${command.id}). The browser canvas will refresh on its next poll.` }] },
+    };
+  }
+
+  if (body.id === undefined || body.id === null) {
+    return null;
+  }
+
+  return { jsonrpc: '2.0', id: body.id, error: { code: -32601, message: 'Unsupported method.' } };
+}
+
 function openMcpEventStream(request: IncomingMessage, response: ServerResponse) {
   response.writeHead(200, {
     'access-control-allow-origin': '*',
@@ -138,8 +189,9 @@ function openMcpEventStream(request: IncomingMessage, response: ServerResponse) 
     'x-accel-buffering': 'no',
   });
 
-  sseClients.add(response);
-  sendSseText(response, 'endpoint', '/mcp');
+  const sessionId = randomUUID();
+  sseSessions.set(sessionId, response);
+  sendSseText(response, 'endpoint', `/mcp/message?sessionId=${sessionId}`);
   sendSse(response, 'ready', {
     protocolVersion: '2024-11-05',
     capabilities: { tools: {} },
@@ -152,7 +204,7 @@ function openMcpEventStream(request: IncomingMessage, response: ServerResponse) 
 
   request.on('close', () => {
     clearInterval(heartbeat);
-    sseClients.delete(response);
+    sseSessions.delete(sessionId);
   });
 }
 
@@ -163,51 +215,37 @@ async function handleMcp(request: IncomingMessage, response: ServerResponse) {
     params?: { name?: string; arguments?: Record<string, unknown> };
   };
 
-  if (body.method === 'initialize') {
-    sendJson(response, 200, {
-      jsonrpc: '2.0',
-      id: body.id,
-      result: {
-        protocolVersion: '2024-11-05',
-        capabilities: { tools: {} },
-        serverInfo: { name: 'scottish-budget-tracker-canvas', version: '0.1.0' },
-      },
-    });
+  const result = handleMcpMessage(body);
+  if (result) {
+    sendJson(response, 'error' in result ? 404 : 200, result);
     return;
   }
 
-  if (body.method === 'tools/list') {
-    sendJson(response, 200, { jsonrpc: '2.0', id: body.id, result: { tools } });
+  sendJson(response, 202, {});
+}
+
+async function handleSseMcpMessage(request: IncomingMessage, response: ServerResponse, sessionId: string | null) {
+  const stream = sessionId ? sseSessions.get(sessionId) : undefined;
+  if (!stream) {
+    sendJson(response, 404, { error: 'Unknown MCP SSE session.' });
     return;
   }
 
-  if (body.method === 'tools/call') {
-    const name = body.params?.name;
-    const args = body.params?.arguments ?? {};
-    if (!name) {
-      sendJson(response, 400, { jsonrpc: '2.0', id: body.id, error: { code: -32602, message: 'Tool name is required.' } });
-      return;
-    }
-
-    if (name === 'canvas_get_state') {
-      sendJson(response, 200, {
-        jsonrpc: '2.0',
-        id: body.id,
-        result: { content: [{ type: 'text', text: JSON.stringify(lastCanvasState ?? { nodes: [], edges: [] }, null, 2) }] },
-      });
-      return;
-    }
-
-    const command = enqueue(name, args);
-    sendJson(response, 200, {
-      jsonrpc: '2.0',
-      id: body.id,
-      result: { content: [{ type: 'text', text: `Queued ${command.tool} (${command.id}). The browser canvas will refresh on its next poll.` }] },
-    });
-    return;
+  const body = JSON.parse(await readBody(request)) as {
+    id?: string | number;
+    method?: string;
+    params?: { name?: string; arguments?: Record<string, unknown> };
+  };
+  const result = handleMcpMessage(body);
+  if (result) {
+    sendSse(stream, 'message', result);
   }
-
-  sendJson(response, 404, { jsonrpc: '2.0', id: body.id, error: { code: -32601, message: 'Unsupported method.' } });
+  response.writeHead(202, {
+    'access-control-allow-origin': '*',
+    'access-control-allow-methods': 'GET,POST,OPTIONS',
+    'access-control-allow-headers': 'content-type,accept,mcp-session-id',
+  });
+  response.end();
 }
 
 const server = createServer(async (request, response) => {
@@ -230,6 +268,11 @@ const server = createServer(async (request, response) => {
 
     if (request.method === 'POST' && url.pathname === '/mcp') {
       await handleMcp(request, response);
+      return;
+    }
+
+    if (request.method === 'POST' && url.pathname === '/mcp/message') {
+      await handleSseMcpMessage(request, response, url.searchParams.get('sessionId'));
       return;
     }
 
