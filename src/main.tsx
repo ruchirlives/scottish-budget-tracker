@@ -423,11 +423,11 @@ function SankeyViz({ candidate, allRows, allYears }: { candidate: FlowCandidate;
 }
 const maxBudgetAreaTotal = Math.max(...years.flatMap((year) => aggregateBy(rows.filter((row) => row.year === year), (row) => row.canonicalArea).map((row) => row.total)));
 
-function seriesForBudgetLine(canonicalArea: string, portfolio: string) {
+function seriesForBudgetLine(portfolio: string) {
   return years.map((year) => ({
     year,
     amount: rows
-      .filter((row) => row.year === year && row.canonicalArea === canonicalArea && row.portfolio === portfolio)
+      .filter((row) => row.year === year && row.portfolio === portfolio)
       .reduce((sum, row) => sum + row.total, 0),
   }));
 }
@@ -474,30 +474,34 @@ const defaultDemoScript: AnimationScript = {
   id: 'nature-investment-story',
   name: 'Nature Investment Story',
   steps: [
-    { delay: 1000, action: 'text', value: 'Nature Investment in the Scottish Budget' },
+    { delay: 800, action: 'text', value: 'Scotland\u2019s Nature Investment Surge' },
     { delay: 2500, action: 'text', value: '' },
-    { delay: 300, action: 'panToNode', nodeId: 'line:Net Zero and Energy:NatureScot Resource - Staff costs', value: 1.2 },
-    { delay: 500, action: 'highlight', nodeId: 'line:Net Zero and Energy:NatureScot Resource - Staff costs', value: ['2024-25', '2025-26'] },
+
+    { delay: 300, action: 'panToNode', nodeId: 'aggregation:1780134564103', value: 0.65 },
+    { delay: 500, action: 'annotate', nodeId: 'aggregation:1780134564103', value: 'NatureScot (new 2024\u201325): \u00a392.4M combined' },
+    { delay: 2200, action: 'unannotate', nodeId: 'aggregation:1780134564103' },
+
+    { delay: 400, action: 'panToNode', nodeId: 'line:Net Zero and Energy:NatureScot Resource - Staff costs', value: 0.9 },
+    { delay: 300, action: 'highlight', nodeId: 'line:Net Zero and Energy:NatureScot Resource - Staff costs', value: ['2024-25', '2025-26'] },
     { delay: 2000, action: 'unhighlight', nodeId: 'line:Net Zero and Energy:NatureScot Resource - Staff costs' },
-    { delay: 500, action: 'panToNode', nodeId: 'line:Net Zero and Energy:Nature Restoration', value: 1.2 },
     { delay: 300, action: 'highlight', nodeId: 'line:Net Zero and Energy:Nature Restoration', value: ['2024-25', '2025-26'] },
     { delay: 2000, action: 'unhighlight', nodeId: 'line:Net Zero and Energy:Nature Restoration' },
-    { delay: 500, action: 'panToNode', nodeId: 'aggregation:1780134564103', value: 1 },
-    { delay: 300, action: 'annotate', nodeId: 'aggregation:1780134564103', value: 'NatureScot Total: £92.4M' },
-    { delay: 2500, action: 'unannotate', nodeId: 'aggregation:1780134564103' },
-    { delay: 500, action: 'panToNode', nodeId: 'line:Rural Affairs, Land Reform and Islands:Peatlands', value: 1 },
+
+    { delay: 400, action: 'panToNode', nodeId: 'aggregation:1780134564996', value: 0.6 },
+    { delay: 500, action: 'annotate', nodeId: 'aggregation:1780134564996', value: 'Rural Affairs: \u00a3108.2M \u2192 \u00a3118.4M' },
+    { delay: 2200, action: 'unannotate', nodeId: 'aggregation:1780134564996' },
+
+    { delay: 400, action: 'panToNode', nodeId: 'line:Rural Affairs, Land Reform and Islands:Peatlands', value: 0.9 },
     { delay: 300, action: 'highlight', nodeId: 'line:Rural Affairs, Land Reform and Islands:Peatlands', value: ['2024-25', '2025-26'] },
     { delay: 2000, action: 'unhighlight', nodeId: 'line:Rural Affairs, Land Reform and Islands:Peatlands' },
-    { delay: 500, action: 'panToNode', nodeId: 'line:Rural Affairs, Land Reform and Islands:Woodland Grants', value: 1 },
     { delay: 300, action: 'highlight', nodeId: 'line:Rural Affairs, Land Reform and Islands:Woodland Grants', value: ['2024-25', '2025-26'] },
     { delay: 2000, action: 'unhighlight', nodeId: 'line:Rural Affairs, Land Reform and Islands:Woodland Grants' },
-    { delay: 500, action: 'panToNode', nodeId: 'aggregation:1780134564996', value: 1 },
-    { delay: 300, action: 'annotate', nodeId: 'aggregation:1780134564996', value: 'Rural Nature Total: £108.2M → £118.4M' },
-    { delay: 2500, action: 'unannotate', nodeId: 'aggregation:1780134564996' },
-    { delay: 500, action: 'panToNode', nodeId: 'aggregation:1780134579396', value: 0.9 },
+
+    { delay: 600, action: 'panToNode', nodeId: 'aggregation:1780134579396', value: 0.8 },
     { delay: 300, action: 'highlight', nodeId: 'aggregation:1780134579396', value: ['2022-23', '2023-24', '2024-25', '2025-26'] },
-    { delay: 500, action: 'text', value: 'Total Nature Investment: £200.6M → £205.3M' },
-    { delay: 2500, action: 'text', value: '7.6x increase from 2023-24 baseline' },
+    { delay: 500, action: 'text', value: 'Total Nature Investment: \u00a3200.6M \u2192 \u00a3205.3M' },
+    { delay: 2500, action: 'text', value: 'Up from \u00a326.5M in 2023\u201324 \u2014 a 7.6x increase' },
+    { delay: 3000, action: 'text', value: '' },
   ],
 };
 
@@ -509,7 +513,7 @@ function refreshBudgetLineNodeData(nodes: CanvasNode[]) {
       ...node,
       data: {
         ...data,
-        series: seriesForBudgetLine(data.canonicalArea, data.label),
+        series: seriesForBudgetLine(data.label),
       },
     };
   });
@@ -1437,7 +1441,7 @@ function CanvasTrackerInner() {
       if (canonicalArea && portfolio) {
         const id = String(args.id ?? `line:${canonicalArea}:${portfolio}`);
         const existing = nextNodes.find((node) => node.id === id);
-        const series = seriesForBudgetLine(canonicalArea, portfolio);
+        const series = seriesForBudgetLine(portfolio);
         if (!existing) {
           nextNodes = [
             ...nextNodes,
@@ -1626,9 +1630,10 @@ function CanvasTrackerInner() {
       }
       inFlight = true;
       try {
-        const sinceQuery = mcpCursorRef.current ? `?since=${encodeURIComponent(mcpCursorRef.current)}` : '';
-        const response = await window.fetch(`${canvasMcpBaseUrl}/canvas/commands${sinceQuery}`);
+        const url = `${canvasMcpBaseUrl}/canvas/commands${mcpCursorRef.current ? `?since=${encodeURIComponent(mcpCursorRef.current)}` : ''}`;
+        const response = await window.fetch(url);
         if (!response.ok) {
+          console.warn('[poll] bad response', response.status, url);
           return;
         }
         const payload = await response.json() as { cursor?: string | null; commands?: Array<{ tool: string; arguments?: Record<string, unknown> }> };
@@ -1636,14 +1641,15 @@ function CanvasTrackerInner() {
           mcpCursorRef.current = payload.cursor;
         }
         if (payload.commands?.length) {
+          console.log('[poll] processing', payload.commands.length, 'commands', payload.commands.map(c=>c.tool));
           payload.commands.forEach(applyCanvasMcpCommand);
           const hasNonAnim = payload.commands.some((c) => !c.tool.startsWith('canvas_anim_'));
           if (hasNonAnim) {
             window.setTimeout(() => fitView({ padding: 0.18, duration: 250 }), 0);
           }
         }
-      } catch {
-        // The app should remain usable when the MCP server is not running.
+      } catch (err) {
+        console.warn('[poll] fetch error', err);
       } finally {
         inFlight = false;
       }
@@ -1682,7 +1688,7 @@ function CanvasTrackerInner() {
           id: `${canonicalArea}||${portfolio}`,
           canonicalArea,
           portfolio,
-          series: seriesForBudgetLine(canonicalArea, portfolio),
+          series: seriesForBudgetLine(portfolio),
         };
       })
       .filter((line) => `${line.canonicalArea} ${line.portfolio}`.toLowerCase().includes(query.toLowerCase()))

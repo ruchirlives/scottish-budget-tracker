@@ -393,6 +393,16 @@ function handleMcpMessage(body: {
         protocolVersion: '2024-11-05',
         capabilities: { tools: {} },
         serverInfo: { name: 'scottish-budget-tracker-canvas', version: '0.1.0' },
+        instructions: `# Canvas Animation Script Conventions
+
+When writing animation scripts for the canvas app:
+
+- **Start clean** — the script should begin with "unannotate" and "unhighlight" steps for all nodes to clear stale state from previous runs. Then "show" all nodes so nothing is hidden.
+- **Then keep annotations visible** — after initialization, do not use "unannotate" or "unhighlight" steps. Once a node is highlighted/annotated during the narrative it should stay that way through the rest so viewers can read at their own pace.
+- **Pan to each node of interest** — always add a panToNode step before highlighting or annotating a node that isn't already in view. Uses setCenter under the hood with duration:500ms; zoom values should be tuned so the target node fills most of the viewport without cropping nearby nodes.
+- **Use panToNode over zoom for viewport** — the zoom action zooms toward viewport center; panToNode centers on a specific node. Prefer panToNode for narrative walkthroughs.
+- **End with a summary text overlay** — final step should be a "text" action summarising the key takeaways.
+- **Reset before replay** — call canvas_anim_reset before canvas_anim_play to clear previous state.`,
       },
     };
   }
@@ -558,6 +568,16 @@ function openMcpEventStream(request: IncomingMessage, response: ServerResponse) 
     protocolVersion: '2024-11-05',
     capabilities: { tools: {} },
     serverInfo: { name: 'scottish-budget-tracker-canvas', version: '0.1.0' },
+    instructions: `# Canvas Animation Script Conventions
+
+When writing animation scripts for the canvas app:
+
+- **Start clean** — the script should begin with "unannotate" and "unhighlight" steps for all nodes to clear stale state from previous runs. Then "show" all nodes so nothing is hidden.
+- **Then keep annotations visible** — after initialization, do not use "unannotate" or "unhighlight" steps. Once a node is highlighted/annotated during the narrative it should stay that way through the rest so viewers can read at their own pace.
+- **Pan to each node of interest** — always add a panToNode step before highlighting or annotating a node that isn't already in view. Uses setCenter under the hood with duration:500ms; zoom values should be tuned so the target node fills most of the viewport without cropping nearby nodes.
+- **Use panToNode over zoom for viewport** — the zoom action zooms toward viewport center; panToNode centers on a specific node. Prefer panToNode for narrative walkthroughs.
+- **End with a summary text overlay** — final step should be a "text" action summarising the key takeaways.
+- **Reset before replay** — call canvas_anim_reset before canvas_anim_play to clear previous state.`,
   });
 
   const heartbeat = setInterval(() => {

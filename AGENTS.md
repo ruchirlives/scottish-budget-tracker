@@ -89,6 +89,17 @@ When adding new years, update `scripts/sources.ts` and verify the parser still p
 - Run `npm audit --omit=dev` after dependency changes.
 - Run `npm run mcp` to start the local remote-type MCP HTTP server for canvas automation. The endpoint is `http://127.0.0.1:8787/mcp`; Vite proxies `/mcp`, `/canvas`, and `/health` during development.
 
+## Canvas Animation Scripts
+
+When writing animation scripts for the canvas MCP app:
+
+- **Keep annotations visible** — do not use `unannotate` or `unhighlight` steps. Once a node is highlighted/annotated it should stay that way through the rest of the animation so viewers can read at their own pace.
+- **Pan to each node of interest** — always add a `panToNode` step before highlighting or annotating a node that isn't already in view. Use `setCenter` with `duration: 500` under the hood; zoom values should be tuned so the target node fills most of the viewport without cropping nearby nodes.
+- **Use `panToNode` with sensible zoom** — start zoomed out (0.65–0.8) for column-level overviews, zoom in (0.9–1.0) for individual node details.
+- **Use `panToNode` over `zoom` for viewport** — `zoom` action zooms toward viewport center; `panToNode` centers on a specific node. Prefer `panToNode` for narrative walkthroughs.
+- **End with a summary text overlay** — final step should be a `text` action summarising the key takeaways.
+- **Reset before replay** — call `canvas_anim_reset` before `canvas_anim_play` to clear previous state.
+
 ## Repo Hygiene
 
 - This repo may not be initialized as a Git repository.

@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "vite",
     "mcp": "tsx --watch server/canvas-mcp-server.ts",
+    "dev:all": "concurrently --names mcp,vite --prefix-colors blue,green \"npm run mcp\" \"npm run dev\"",
     "fetch:data": "tsx scripts/fetch-budget-data.ts",
     "generate:flows": "tsx scripts/generate-budget-flows.ts",
     "generate:flow-candidates": "tsx scripts/generate-budget-flow-candidates.ts",
@@ -19,6 +20,7 @@
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.2",
+    "concurrently": "^10.0.0",
     "tsx": "^4.22.3",
     "typescript": "~6.0.2",
     "vite": "^8.0.12"
