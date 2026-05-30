@@ -1378,7 +1378,8 @@ function CanvasTrackerInner() {
           <button className="secondary" onClick={clearCanvas} type="button">
             Clear canvas
           </button>
-          <button className="secondary" onClick={addRuleAggregation} type="button">
+          <button onClick={addRuleAggregation} type="button">
+            <Plus size={18} />
             Rule
           </button>
           <button className="secondary" onClick={saveCanvasFile} type="button">
