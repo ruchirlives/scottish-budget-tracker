@@ -583,6 +583,135 @@ th {
   margin-right: 6px;
 }
 
+.canvas-workspace {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 340px minmax(0, 1fr);
+  margin-top: 16px;
+}
+
+.canvas-sidebar,
+.canvas-panel {
+  background: #ffffff;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  min-width: 0;
+  padding: 16px;
+}
+
+.budget-line-palette {
+  display: grid;
+  gap: 8px;
+  max-height: 620px;
+  overflow: auto;
+}
+
+.budget-line-palette button {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+  text-align: left;
+}
+
+.budget-line-palette span {
+  color: #111827;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.budget-line-palette small {
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+.budget-line-palette strong {
+  color: #0065bd;
+  font-size: 0.82rem;
+}
+
+.canvas-toolbar {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.canvas-toolbar button {
+  align-items: center;
+  background: #0065bd;
+  border: 1px solid #0065bd;
+  border-radius: 6px;
+  color: #ffffff;
+  display: inline-flex;
+  font-weight: 700;
+  gap: 8px;
+  min-height: 38px;
+  padding: 8px 12px;
+}
+
+.canvas-toolbar span {
+  color: #64748b;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.flow-canvas {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  height: 680px;
+  overflow: hidden;
+}
+
+.canvas-node {
+  background: #ffffff;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  box-shadow: 0 8px 18px rgb(15 23 42 / 10%);
+  min-width: 220px;
+  padding: 10px 12px;
+}
+
+.canvas-node strong,
+.canvas-node span {
+  display: block;
+}
+
+.canvas-node strong {
+  color: #111827;
+  font-size: 0.92rem;
+  line-height: 1.25;
+}
+
+.canvas-node span {
+  color: #64748b;
+  font-size: 0.78rem;
+  margin-top: 4px;
+}
+
+.aggregation-node {
+  border-color: #d16b00;
+  background: #fff8ed;
+}
+
+.canvas-node table {
+  font-size: 0.76rem;
+  margin-top: 8px;
+}
+
+.canvas-node td {
+  border-bottom: 1px solid #e5e7eb;
+  padding: 3px 4px;
+}
+
+.canvas-node td:first-child {
+  min-width: auto;
+}
+
 @media (max-width: 900px) {
   main {
     padding: 24px 16px 36px;
@@ -596,6 +725,10 @@ th {
 
   .metrics,
   .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .canvas-workspace {
     grid-template-columns: 1fr;
   }
 

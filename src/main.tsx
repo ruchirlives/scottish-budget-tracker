@@ -1,6 +1,23 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { ArrowDownUp, ChevronRight, Database, Download, LineChart as LineChartIcon, Search, X } from 'lucide-react';
+import { ArrowDownUp, ChevronRight, Database, Download, LineChart as LineChartIcon, Plus, Search, X } from 'lucide-react';
+import {
+  addEdge,
+  Background,
+  Controls,
+  Handle,
+  MiniMap,
+  Position,
+  ReactFlow,
+  ReactFlowProvider,
+  useEdgesState,
+  useNodesState,
+  useReactFlow,
+  type Connection,
+  type Edge,
+  type Node,
+  type NodeProps,
+} from '@xyflow/react';
 import {
   Bar,
   BarChart,
@@ -13,6 +30,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import '@xyflow/react/dist/style.css';
 import './style.css';
 import level4Data from '../data/budget-level-4.normalized.json';
 import candidateData from '../data/budget-line-flow-candidates.json';
@@ -38,6 +56,22 @@ type AggregateRow = {
   total: number;
   rows: BudgetRow[];
 };
+
+type BudgetLineNodeData = {
+  label: string;
+  canonicalArea: string;
+  series: Array<{ year: string; amount: number }>;
+};
+
+type AggregationNodeData = {
+  label: string;
+  series: Array<{ year: string; amount: number }>;
+  inputCount: number;
+};
+
+type BudgetLineNode = Node<BudgetLineNodeData, 'budgetLine'>;
+type AggregationNode = Node<AggregationNodeData, 'aggregation'>;
+type CanvasNode = BudgetLineNode | AggregationNode;
 
 type FlowLink = {
   year: string;
@@ -309,6 +343,26 @@ function SankeyViz({ candidate, allRows, allYears }: { candidate: FlowCandidate;
   );
 }
 const maxBudgetAreaTotal = Math.max(...years.flatMap((year) => aggregateBy(rows.filter((row) => row.year === year), (row) => row.canonicalArea).map((row) => row.total)));
+
+function seriesForBudgetLine(canonicalArea: string, portfolio: string) {
+  return years.map((year) => ({
+    year,
+    amount: rows
+      .filter((row) => row.year === year && row.canonicalArea === canonicalArea && row.portfolio === portfolio)
+      .reduce((sum, row) => sum + row.total, 0),
+  }));
+}
+
+function sumSeries(seriesList: Array<Array<{ year: string; amount: number }>>) {
+  return years.map((year) => ({
+    year,
+    amount: seriesList.reduce((sum, series) => sum + (series.find((point) => point.year === year)?.amount ?? 0), 0),
+  }));
+}
+
+function latestSeriesAmount(series: Array<{ year: string; amount: number }>) {
+  return series.at(-1)?.amount ?? 0;
+}
 function BudgetTracker() {
   const [selectedYear, setSelectedYear] = React.useState(latestYear);
   const [query, setQuery] = React.useState('');
@@ -819,8 +873,213 @@ function OutturnTracker() {
   );
 }
 
+const canvasNodeTypes = {
+  budgetLine: BudgetLineCanvasNode,
+  aggregation: AggregationCanvasNode,
+};
+
+function CanvasTracker() {
+  return (
+    <ReactFlowProvider>
+      <CanvasTrackerInner />
+    </ReactFlowProvider>
+  );
+}
+
+function CanvasTrackerInner() {
+  const { screenToFlowPosition } = useReactFlow();
+  const [query, setQuery] = React.useState('');
+  const [nodes, setNodes, onNodesChange] = useNodesState<CanvasNode>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+
+  const availableLines = React.useMemo(() => (
+    aggregateBy(rows, (row) => `${row.canonicalArea}||${row.portfolio}`)
+      .map((row) => {
+        const [canonicalArea, portfolio] = row.name.split('||');
+        return {
+          id: `${canonicalArea}||${portfolio}`,
+          canonicalArea,
+          portfolio,
+          series: seriesForBudgetLine(canonicalArea, portfolio),
+        };
+      })
+      .filter((line) => `${line.canonicalArea} ${line.portfolio}`.toLowerCase().includes(query.toLowerCase()))
+      .sort((a, b) => latestSeriesAmount(b.series) - latestSeriesAmount(a.series))
+      .slice(0, 80)
+  ), [query]);
+
+  React.useEffect(() => {
+    setNodes((currentNodes) => {
+      const inputSeriesByAggregation = new Map<string, Array<Array<{ year: string; amount: number }>>>();
+      for (const edge of edges) {
+        const source = currentNodes.find((node) => node.id === edge.source);
+        const target = currentNodes.find((node) => node.id === edge.target);
+        if (!source || !target || target.type !== 'aggregation') continue;
+        const sourceSeries = source.type === 'budgetLine'
+          ? (source.data as BudgetLineNodeData).series
+          : (source.data as AggregationNodeData).series;
+        inputSeriesByAggregation.set(target.id, [...(inputSeriesByAggregation.get(target.id) ?? []), sourceSeries]);
+      }
+
+      return currentNodes.map((node) => {
+        if (node.type !== 'aggregation') return node;
+        const inputSeries = inputSeriesByAggregation.get(node.id) ?? [];
+        return {
+          ...node,
+          data: {
+            ...(node.data as AggregationNodeData),
+            inputCount: inputSeries.length,
+            series: sumSeries(inputSeries),
+          },
+        };
+      });
+    });
+  }, [edges, setNodes]);
+
+  const onConnect = React.useCallback((connection: Connection) => {
+    setEdges((currentEdges) => addEdge({
+      ...connection,
+      style: { stroke: '#0065bd', strokeWidth: 2 },
+    }, currentEdges));
+  }, [setEdges]);
+
+  function handleDragStart(event: React.DragEvent<HTMLButtonElement>, line: { canonicalArea: string; portfolio: string; series: Array<{ year: string; amount: number }> }) {
+    event.dataTransfer.setData('application/budget-line', JSON.stringify(line));
+    event.dataTransfer.effectAllowed = 'move';
+  }
+
+  function handleDragOver(event: React.DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  }
+
+  function handleDrop(event: React.DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    const rawLine = event.dataTransfer.getData('application/budget-line');
+    if (!rawLine) return;
+    const line = JSON.parse(rawLine) as { canonicalArea: string; portfolio: string; series: Array<{ year: string; amount: number }> };
+    const id = `line:${line.canonicalArea}:${line.portfolio}`;
+    const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+    const nextNode: BudgetLineNode = {
+      id,
+      type: 'budgetLine',
+      position,
+      data: {
+        label: line.portfolio,
+        canonicalArea: line.canonicalArea,
+        series: line.series,
+      },
+    };
+    setNodes((currentNodes) => currentNodes.some((node) => node.id === id)
+      ? currentNodes.map((node) => node.id === id ? { ...node, position } : node)
+      : [...currentNodes, nextNode]);
+  }
+
+  function addAggregation() {
+    const id = `aggregation:${crypto.randomUUID()}`;
+    const nextNode: AggregationNode = {
+      id,
+      type: 'aggregation',
+      position: { x: 520, y: 160 + nodes.filter((node) => node.type === 'aggregation').length * 90 },
+      data: {
+        label: `Aggregation ${nodes.filter((node) => node.type === 'aggregation').length + 1}`,
+        inputCount: 0,
+        series: sumSeries([]),
+      },
+    };
+    setNodes((currentNodes) => [...currentNodes, nextNode]);
+  }
+
+  return (
+    <section className="canvas-workspace">
+      <aside className="canvas-sidebar">
+        <div className="panel-title">
+          <Search size={20} />
+          <h2>Budget lines</h2>
+        </div>
+        <label className="search full">
+          <Search size={18} />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search budget lines" />
+        </label>
+        <div className="budget-line-palette">
+          {availableLines.map((line) => (
+            <button draggable key={line.id} onDragStart={(event) => handleDragStart(event, line)} type="button">
+              <span>{line.portfolio}</span>
+              <small>{line.canonicalArea}</small>
+              <strong>{compactMoney(latestSeriesAmount(line.series))}</strong>
+            </button>
+          ))}
+        </div>
+      </aside>
+
+      <section className="canvas-panel">
+        <div className="canvas-toolbar">
+          <button onClick={addAggregation} type="button">
+            <Plus size={18} />
+            Aggregation
+          </button>
+          <span>{nodes.length} nodes | {edges.length} links</span>
+        </div>
+        <div className="flow-canvas" onDragOver={handleDragOver} onDrop={handleDrop}>
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            nodeTypes={canvasNodeTypes}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            fitView
+          >
+            <Background color="#d8dee8" gap={18} />
+            <MiniMap pannable zoomable />
+            <Controls />
+          </ReactFlow>
+        </div>
+      </section>
+    </section>
+  );
+}
+
+function BudgetLineCanvasNode({ data }: NodeProps<BudgetLineNode>) {
+  return (
+    <div className="canvas-node budget-node">
+      <strong>{data.label}</strong>
+      <span>{data.canonicalArea}</span>
+      <SeriesMiniTable series={data.series} />
+      <Handle type="source" position={Position.Right} />
+    </div>
+  );
+}
+
+function AggregationCanvasNode({ data }: NodeProps<AggregationNode>) {
+  return (
+    <div className="canvas-node aggregation-node">
+      <Handle type="target" position={Position.Left} />
+      <strong>{data.label}</strong>
+      <span>{data.inputCount} inputs</span>
+      <SeriesMiniTable series={data.series} />
+      <Handle type="source" position={Position.Right} />
+    </div>
+  );
+}
+
+function SeriesMiniTable({ series }: { series: Array<{ year: string; amount: number }> }) {
+  return (
+    <table>
+      <tbody>
+        {series.map((point) => (
+          <tr key={point.year}>
+            <td>{point.year}</td>
+            <td>{compactMoney(point.amount)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 function App() {
-  const [activeTab, setActiveTab] = React.useState<'budget' | 'outturn'>('budget');
+  const [activeTab, setActiveTab] = React.useState<'budget' | 'outturn' | 'canvas'>('budget');
 
   return (
     <main>
@@ -830,18 +1089,19 @@ function App() {
           <h1>Compare planned budgets with broad outturn reporting</h1>
           <p className="disclaimer">Independent project using published Scottish Government data. Not affiliated with or endorsed by the Scottish Government.</p>
         </div>
-        <a className="source-link" href={activeTab === 'budget' ? 'https://www.gov.scot/publications/scottish-budget-2025-2026/documents/' : outturnData.sourceUrl} target="_blank">
+        <a className="source-link" href={activeTab === 'outturn' ? outturnData.sourceUrl : 'https://www.gov.scot/publications/scottish-budget-2025-2026/documents/'} target="_blank">
           <Database size={18} />
-          {activeTab === 'budget' ? 'budget source' : 'outturn source'}
+          {activeTab === 'outturn' ? 'outturn source' : 'budget source'}
         </a>
       </header>
 
       <div className="tabs" role="tablist" aria-label="Data view">
         <button className={activeTab === 'budget' ? 'active' : ''} onClick={() => setActiveTab('budget')} type="button">Budget Tracker</button>
         <button className={activeTab === 'outturn' ? 'active' : ''} onClick={() => setActiveTab('outturn')} type="button">Outturn</button>
+        <button className={activeTab === 'canvas' ? 'active' : ''} onClick={() => setActiveTab('canvas')} type="button">Canvas</button>
       </div>
 
-      {activeTab === 'budget' ? <BudgetTracker /> : <OutturnTracker />}
+      {activeTab === 'budget' ? <BudgetTracker /> : activeTab === 'outturn' ? <OutturnTracker /> : <CanvasTracker />}
     </main>
   );
 }
