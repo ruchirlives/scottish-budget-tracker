@@ -1867,56 +1867,59 @@ function CanvasTrackerInner() {
 
       <section className="canvas-panel">
         <div className="canvas-toolbar">
-          <button onClick={addAggregation} type="button">
-            <Plus size={18} />
-            Aggregation
-          </button>
-          <button className="secondary" onClick={clearCanvas} type="button">
-            Clear canvas
-          </button>
-          <button onClick={addRuleAggregation} type="button">
-            <Plus size={18} />
-            Rule
-          </button>
-          <button className="secondary" onClick={saveCanvasFile} type="button">
-            Save
-          </button>
-          <button className="secondary" onClick={() => fileInputRef.current?.click()} type="button">
-            Load
-          </button>
-          <input
-            ref={fileInputRef}
-            className="hidden-file-input"
-            type="file"
-            accept="application/json,.json"
-            onChange={(event) => void loadCanvasFile(event.target.files?.[0])}
-          />
-          <span className="toolbar-sep" />
-          <select
-            className="anim-script-select"
-            value={selectedAnimScriptId}
-            onChange={(e) => setSelectedAnimScriptId(e.target.value)}
-            disabled={isAnimating}
-          >
-            {animScripts.map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
-          <button className={isAnimating ? 'danger' : ''} onClick={isAnimating ? stopAnimation : runAnimation} type="button" title={isAnimating ? 'Stop' : 'Play'}>
-            {isAnimating ? '⏹' : '▶'}
-          </button>
-          <button className="secondary" onClick={stepBackward} type="button" title="Previous step" disabled={animStepIndex < 0}>
-            ◀
-          </button>
-          <button className="secondary" onClick={stepForward} type="button" title="Next step">
-            ▶
-          </button>
-          <span className="step-counter">{animStepIndex + 1}/{animScripts.find((s) => s.id === selectedAnimScriptId)?.steps.filter((s) => s.nodeId).length ?? 0}</span>
-          <button className="secondary" onClick={resetAnimation} type="button" title="Reset animation">Reset</button>
-          <button className="secondary" onClick={() => setShowAnimEditor(true)} type="button" title="Edit scripts" disabled={isAnimating}>
-            Edit
-          </button>
-          <span>{nodes.length} nodes | {edges.length} links</span>
+          <div className="canvas-toolbar-row">
+            <button onClick={addAggregation} type="button">
+              <Plus size={16} />
+              Aggregation
+            </button>
+            <button onClick={addRuleAggregation} type="button">
+              <Plus size={16} />
+              Rule
+            </button>
+            <button className="secondary" onClick={clearCanvas} type="button">
+              Clear
+            </button>
+            <button className="secondary" onClick={saveCanvasFile} type="button">
+              Save
+            </button>
+            <button className="secondary" onClick={() => fileInputRef.current?.click()} type="button">
+              Load
+            </button>
+            <input
+              ref={fileInputRef}
+              className="hidden-file-input"
+              type="file"
+              accept="application/json,.json"
+              onChange={(event) => void loadCanvasFile(event.target.files?.[0])}
+            />
+            <span>{nodes.length} nodes | {edges.length} links</span>
+          </div>
+          <div className="canvas-toolbar-row">
+            <select
+              className="anim-script-select"
+              value={selectedAnimScriptId}
+              onChange={(e) => setSelectedAnimScriptId(e.target.value)}
+              disabled={isAnimating}
+            >
+              {animScripts.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+            <button className={isAnimating ? 'danger' : ''} onClick={isAnimating ? stopAnimation : runAnimation} type="button" title={isAnimating ? 'Stop' : 'Play'}>
+              {isAnimating ? '⏹' : '▶'}
+            </button>
+            <button className="secondary" onClick={stepBackward} type="button" title="Previous step" disabled={animStepIndex < 0}>
+              ◀
+            </button>
+            <button className="secondary" onClick={stepForward} type="button" title="Next step">
+              ▶
+            </button>
+            <span className="step-counter">{animStepIndex + 1}/{animScripts.find((s) => s.id === selectedAnimScriptId)?.steps.filter((s) => s.nodeId).length ?? 0}</span>
+            <button className="secondary" onClick={resetAnimation} type="button" title="Reset animation">Reset</button>
+            <button className="secondary" onClick={() => setShowAnimEditor(true)} type="button" title="Edit scripts" disabled={isAnimating}>
+              Edit
+            </button>
+          </div>
         </div>
         <div className="flow-canvas" onDragOver={handleDragOver} onDrop={handleDrop}>
           <ReactFlow
