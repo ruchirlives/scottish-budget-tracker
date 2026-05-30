@@ -976,6 +976,8 @@ const canvasNodeTypes = {
   aggregation: AggregationCanvasNode,
 };
 
+let toggleCanvasNodeSelection: ((nodeId: string) => void) | null = null;
+
 function CanvasTracker() {
   return (
     <ReactFlowProvider>
@@ -996,6 +998,19 @@ function CanvasTrackerInner() {
   const handleNodesChange = React.useCallback((changes: NodeChange<CanvasNode>[]) => {
     onNodesChange(changes);
   }, [onNodesChange]);
+
+  React.useEffect(() => {
+    toggleCanvasNodeSelection = (nodeId: string) => {
+      setNodes((currentNodes) => currentNodes.map((currentNode) => (
+        currentNode.id === nodeId
+          ? { ...currentNode, selected: !currentNode.selected }
+          : currentNode
+      )));
+    };
+    return () => {
+      toggleCanvasNodeSelection = null;
+    };
+  }, [setNodes]);
 
   const availableLines = React.useMemo(() => (
     aggregateBy(rows, (row) => `${row.canonicalArea}||${row.portfolio}`)
@@ -1222,15 +1237,6 @@ function CanvasTrackerInner() {
             onNodesChange={handleNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
-            onNodeClick={(event, node) => {
-              if (!event.ctrlKey && !event.metaKey) return;
-              event.preventDefault();
-              setNodes((currentNodes) => currentNodes.map((currentNode) => (
-                currentNode.id === node.id
-                  ? { ...currentNode, selected: !currentNode.selected }
-                  : currentNode
-              )));
-            }}
             onNodeDoubleClick={(_event, node) => {
               if (node.type === 'aggregation') setRenamingNodeId(node.id);
             }}
@@ -1257,9 +1263,9 @@ function CanvasTrackerInner() {
   );
 }
 
-function BudgetLineCanvasNode({ data }: NodeProps<BudgetLineNode>) {
+function BudgetLineCanvasNode({ id, data }: NodeProps<BudgetLineNode>) {
   return (
-    <div className="canvas-node budget-node">
+    <div className="canvas-node budget-node" onMouseDownCapture={(event) => handleCanvasNodeMouseDown(event, id)}>
       <strong>{data.label}</strong>
       <span>{data.canonicalArea}</span>
       <SeriesMiniTable series={data.series} />
@@ -1268,9 +1274,9 @@ function BudgetLineCanvasNode({ data }: NodeProps<BudgetLineNode>) {
   );
 }
 
-function AggregationCanvasNode({ data }: NodeProps<AggregationNode>) {
+function AggregationCanvasNode({ id, data }: NodeProps<AggregationNode>) {
   return (
-    <div className="canvas-node aggregation-node">
+    <div className="canvas-node aggregation-node" onMouseDownCapture={(event) => handleCanvasNodeMouseDown(event, id)}>
       <Handle type="target" position={Position.Left} />
       <strong>{data.label}</strong>
       <span>{data.inputCount} inputs</span>
@@ -1278,6 +1284,13 @@ function AggregationCanvasNode({ data }: NodeProps<AggregationNode>) {
       <Handle type="source" position={Position.Right} />
     </div>
   );
+}
+
+function handleCanvasNodeMouseDown(event: React.MouseEvent, nodeId: string) {
+  if (!event.ctrlKey && !event.metaKey) return;
+  event.preventDefault();
+  event.stopPropagation();
+  toggleCanvasNodeSelection?.(nodeId);
 }
 
 function SeriesMiniTable({ series }: { series: Array<{ year: string; amount: number }> }) {
