@@ -1491,6 +1491,7 @@ function handleCanvasNodeMouseDown(event: React.MouseEvent, nodeId: string) {
 
 const ruleFields: RuleCondition['field'][] = ['portfolio', 'canonicalArea', 'area', 'budgetLine', 'year', 'total', 'flowStatus'];
 const ruleOperators: RuleCondition['operator'][] = ['contains', 'equals', 'greater_than', 'less_than', 'matches_regex'];
+const flowStatusOptions = Array.from(new Set(enrichedRows.flatMap((row) => row.flowStatuses))).sort();
 
 function RuleAggregationDialog({
   data,
@@ -1534,7 +1535,14 @@ function RuleAggregationDialog({
               <select value={condition.operator} onChange={(event) => updateCondition(condition.id, { operator: event.target.value as RuleCondition['operator'] })}>
                 {ruleOperators.map((operator) => <option key={operator} value={operator}>{operator}</option>)}
               </select>
-              <input value={condition.value} onChange={(event) => updateCondition(condition.id, { value: event.target.value })} />
+              {condition.field === 'flowStatus' ? (
+                <select value={condition.value} onChange={(event) => updateCondition(condition.id, { value: event.target.value, operator: condition.operator === 'contains' ? 'equals' : condition.operator })}>
+                  <option value="">Any status</option>
+                  {flowStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}
+                </select>
+              ) : (
+                <input value={condition.value} onChange={(event) => updateCondition(condition.id, { value: event.target.value })} />
+              )}
               <button type="button" onClick={() => setConditions((current) => current.filter((item) => item.id !== condition.id))}>Remove</button>
             </div>
           ))}
