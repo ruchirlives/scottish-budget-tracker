@@ -52,11 +52,11 @@ main {
 
 h1 {
   color: #111827;
-  font-size: clamp(2rem, 6vw, 4.5rem);
+  font-size: clamp(1.2rem, 3vw, 2rem);
   letter-spacing: 0;
-  line-height: 1;
+  line-height: 1.2;
   margin: 0;
-  max-width: 820px;
+  max-width: 620px;
 }
 
 .disclaimer {
@@ -706,6 +706,20 @@ th {
   color: #64748b;
   font-size: 0.82rem;
   font-weight: 700;
+}
+
+.spacing-slider {
+  align-items: center;
+  display: inline-flex;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.spacing-slider input[type="range"] {
+  width: 80px;
+  accent-color: #0065bd;
 }
 
 .hidden-file-input {

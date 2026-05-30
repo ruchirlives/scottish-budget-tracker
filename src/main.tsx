@@ -103,6 +103,7 @@ type CanvasNode = BudgetLineNode | AggregationNode | RuleAggregationNode;
 type CanvasStorage = {
   nodes: CanvasNode[];
   edges: Edge[];
+  spacing?: number;
 };
 
 type AnimationAction = 'highlight' | 'unhighlight' | 'show' | 'hide' | 'annotate' | 'unannotate' | 'move' | 'zoom' | 'pan' | 'text' | 'panToNode';
@@ -444,17 +445,18 @@ function latestSeriesAmount(series: Array<{ year: string; amount: number }>) {
 }
 
 function readCanvasStorage(): CanvasStorage {
-  if (typeof window === 'undefined') return { nodes: [], edges: [] };
+  if (typeof window === 'undefined') return { nodes: [], edges: [], spacing: 1.0 };
   try {
     const raw = window.localStorage.getItem(budgetCanvasStorageKey);
-    if (!raw) return { nodes: [], edges: [] };
+    if (!raw) return { nodes: [], edges: [], spacing: 1.0 };
     const parsed = JSON.parse(raw) as Partial<CanvasStorage>;
     return {
       nodes: Array.isArray(parsed.nodes) ? parsed.nodes : [],
       edges: Array.isArray(parsed.edges) ? parsed.edges : [],
+      spacing: typeof parsed.spacing === 'number' ? parsed.spacing : 1.0,
     };
   } catch {
-    return { nodes: [], edges: [] };
+    return { nodes: [], edges: [], spacing: 1.0 };
   }
 }
 
@@ -813,9 +815,9 @@ function BudgetTracker() {
                 <h2>{selectedFlow.label}</h2>
               </div>
               <ResponsiveContainer width="100%" height={340}>
-                <LineChart data={flowSeries}>
+                <LineChart data={flowSeries} margin={{ left: 40, bottom: 28 }}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="year" />
+                  <XAxis dataKey="year" tickMargin={10} />
                   <YAxis tickFormatter={compactMoney} />
                   <Tooltip formatter={tooltipMoney} />
                   <Line dataKey="total" stroke="#0065bd" strokeWidth={3} dot={{ r: 5 }} />
@@ -987,11 +989,11 @@ function BudgetTracker() {
             <LineChartIcon size={20} />
             <h2>{selectedArea ? `Level 4 lines in ${selectedArea}` : 'Budget area totals'}</h2>
           </div>
-          <ResponsiveContainer width="100%" height={340}>
-            <BarChart data={visibleRows} layout="vertical" margin={{ left: 16, right: 24 }}>
+          <ResponsiveContainer width="100%" height={960}>
+            <BarChart data={visibleRows} layout="vertical" margin={{ left: 32, right: 24 }}>
               <CartesianGrid strokeDasharray="3 3" horizontal={false} />
               <XAxis type="number" tickFormatter={compactMoney} domain={selectedArea ? ['auto', 'auto'] : [0, maxBudgetAreaTotal]} />
-              <YAxis dataKey="name" type="category" width={180} tick={{ fontSize: 12 }} />
+              <YAxis dataKey="name" type="category" width={220} tick={{ fontSize: 12 }} />
               <Tooltip formatter={tooltipMoney} />
               <Bar dataKey="total" radius={[0, 4, 4, 0]} onClick={selectBarPayload} cursor="pointer">
                 {visibleRows.map((row, index) => (
@@ -1008,9 +1010,9 @@ function BudgetTracker() {
             <h2>{selectedLine ?? selectedArea ?? 'Multi-year trend'}</h2>
           </div>
           <ResponsiveContainer width="100%" height={260}>
-            <LineChart data={trend}>
+            <LineChart data={trend} margin={{ left: 40, bottom: 28 }}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="year" />
+              <XAxis dataKey="year" tickMargin={10} />
               <YAxis tickFormatter={compactMoney} />
               <Tooltip formatter={tooltipMoney} />
               <Line dataKey="total" stroke="#0065bd" strokeWidth={3} dot={{ r: 5 }} />
@@ -1188,6 +1190,8 @@ function CanvasTrackerInner() {
   const [parentFilter, setParentFilter] = React.useState<string | null>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState<CanvasNode>(refreshBudgetLineNodeData(initialCanvas.nodes));
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialCanvas.edges);
+  const [spacing, setSpacing] = React.useState(initialCanvas.spacing ?? 1.0);
+  const prevSpacingRef = React.useRef(spacing);
   const nodesRef = React.useRef<CanvasNode[]>(nodes);
   const edgesRef = React.useRef<Edge[]>(edges);
   const mcpCursorRef = React.useRef<string | null>(null);
@@ -1208,6 +1212,25 @@ function CanvasTrackerInner() {
   const animStopRef = React.useRef(false);
   const animSnapshotsRef = React.useRef<Array<{ nodeId: string; data: CanvasNode['data']; position: { x: number; y: number }; hidden?: boolean }>>([]);
   const initialViewportRef = React.useRef<{ x: number; y: number; zoom: number } | null>(null);
+
+  React.useEffect(() => {
+    const prev = prevSpacingRef.current;
+    if (spacing === prev) return;
+    const ratio = spacing / prev;
+    setNodes((currentNodes) => {
+      if (currentNodes.length === 0) return currentNodes;
+      const cx = currentNodes.reduce((s, n) => s + n.position.x, 0) / currentNodes.length;
+      const cy = currentNodes.reduce((s, n) => s + n.position.y, 0) / currentNodes.length;
+      return currentNodes.map((n) => ({
+        ...n,
+        position: {
+          x: cx + (n.position.x - cx) * ratio,
+          y: cy + (n.position.y - cy) * ratio,
+        },
+      }));
+    });
+    prevSpacingRef.current = spacing;
+  }, [spacing, setNodes]);
 
   React.useEffect(() => {
     try {
@@ -1718,8 +1741,8 @@ function CanvasTrackerInner() {
   }, [setNodes]);
 
   React.useEffect(() => {
-    window.localStorage.setItem(budgetCanvasStorageKey, JSON.stringify({ nodes, edges }));
-  }, [edges, nodes]);
+    window.localStorage.setItem(budgetCanvasStorageKey, JSON.stringify({ nodes, edges, spacing }));
+  }, [edges, nodes, spacing]);
 
   React.useEffect(() => {
     postCanvasMcpState(nodes, edges);
@@ -1868,6 +1891,7 @@ function CanvasTrackerInner() {
       app: 'scottish-budget-tracker',
       nodes,
       edges,
+      spacing,
       animScripts,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -1895,6 +1919,11 @@ function CanvasTrackerInner() {
       if (Array.isArray(loadedScripts) && loadedScripts.length > 0) {
         setAnimScripts(loadedScripts);
         setSelectedAnimScriptId(loadedScripts[0].id);
+      }
+      if (typeof (parsed as Record<string, unknown>).spacing === 'number') {
+        const loadedSpacing = (parsed as Record<string, unknown>).spacing as number;
+        prevSpacingRef.current = loadedSpacing;
+        setSpacing(loadedSpacing);
       }
     } catch (error) {
       window.alert(error instanceof Error ? error.message : 'Unable to load canvas file.');
@@ -2005,6 +2034,20 @@ function CanvasTrackerInner() {
             <button className="secondary" onClick={() => setShowAnimEditor(true)} type="button" title="Edit scripts" disabled={isAnimating}>
               Edit
             </button>
+          </div>
+          <div className="canvas-toolbar-row">
+            <label className="spacing-slider">
+              <span>Spacing</span>
+              <input
+                type="range"
+                min="0.3"
+                max="3.0"
+                step="0.1"
+                value={spacing}
+                onChange={(e) => setSpacing(parseFloat(e.target.value))}
+              />
+              <span>{spacing.toFixed(1)}</span>
+            </label>
           </div>
         </div>
         <div className="flow-canvas" ref={flowCanvasRef} onDragOver={handleDragOver} onDrop={handleDrop}>
