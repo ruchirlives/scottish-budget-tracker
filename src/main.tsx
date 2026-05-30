@@ -1223,6 +1223,8 @@ function CanvasTrackerInner() {
             onNodeDoubleClick={(_event, node) => {
               if (node.type === 'aggregation') setRenamingNodeId(node.id);
             }}
+            multiSelectionKeyCode={['Control', 'Meta']}
+            selectionKeyCode={['Shift']}
             fitView
           >
             <Background color="#d8dee8" gap={18} />
