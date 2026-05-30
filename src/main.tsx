@@ -952,6 +952,7 @@ function CanvasTrackerInner() {
   const [query, setQuery] = React.useState('');
   const [nodes, setNodes, onNodesChange] = useNodesState<CanvasNode>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const [renamingNodeId, setRenamingNodeId] = React.useState<string | null>(null);
 
   const availableLines = React.useMemo(() => (
     aggregateBy(rows, (row) => `${row.canonicalArea}||${row.portfolio}`)
@@ -1033,6 +1034,25 @@ function CanvasTrackerInner() {
     setNodes((currentNodes) => [...currentNodes, nextNode]);
   }
 
+  function renameAggregation(value: string) {
+    if (!renamingNodeId) return;
+    const label = value.trim();
+    if (!label) return;
+    setNodes((currentNodes) => currentNodes.map((node) => {
+      if (node.id !== renamingNodeId || node.type !== 'aggregation') return node;
+      return {
+        ...node,
+        data: {
+          ...(node.data as AggregationNodeData),
+          label,
+        },
+      };
+    }));
+    setRenamingNodeId(null);
+  }
+
+  const renamingNode = nodes.find((node) => node.id === renamingNodeId && node.type === 'aggregation') as AggregationNode | undefined;
+
   return (
     <section className="canvas-workspace">
       <aside className="canvas-sidebar">
@@ -1071,6 +1091,9 @@ function CanvasTrackerInner() {
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
+            onNodeDoubleClick={(_event, node) => {
+              if (node.type === 'aggregation') setRenamingNodeId(node.id);
+            }}
             fitView
           >
             <Background color="#d8dee8" gap={18} />
@@ -1079,6 +1102,13 @@ function CanvasTrackerInner() {
           </ReactFlow>
         </div>
       </section>
+      {renamingNode ? (
+        <RenameAggregationDialog
+          initialValue={(renamingNode.data as AggregationNodeData).label}
+          onCancel={() => setRenamingNodeId(null)}
+          onSave={renameAggregation}
+        />
+      ) : null}
     </section>
   );
 }
@@ -1118,6 +1148,34 @@ function SeriesMiniTable({ series }: { series: Array<{ year: string; amount: num
         ))}
       </tbody>
     </table>
+  );
+}
+
+function RenameAggregationDialog({
+  initialValue,
+  onCancel,
+  onSave,
+}: {
+  initialValue: string;
+  onCancel: () => void;
+  onSave: (value: string) => void;
+}) {
+  const [value, setValue] = React.useState(initialValue);
+
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <form className="rename-dialog" onSubmit={(event) => {
+        event.preventDefault();
+        onSave(value);
+      }}>
+        <h2>Rename aggregation</h2>
+        <input autoFocus value={value} onChange={(event) => setValue(event.target.value)} />
+        <div>
+          <button type="button" onClick={onCancel}>Cancel</button>
+          <button type="submit">Save</button>
+        </div>
+      </form>
+    </div>
   );
 }
 
