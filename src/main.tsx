@@ -1382,6 +1382,10 @@ function CanvasTrackerInner() {
     window.localStorage.setItem(budgetCanvasStorageKey, JSON.stringify({ nodes, edges }));
   }, [edges, nodes]);
 
+  React.useEffect(() => {
+    postCanvasMcpState(nodes, edges);
+  }, [edges, nodes, postCanvasMcpState]);
+
   const onConnect = React.useCallback((connection: Connection) => {
     if (!connection.source || !connection.target || connection.source === connection.target) return;
     setEdges((currentEdges) => {
