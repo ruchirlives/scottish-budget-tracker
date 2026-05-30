@@ -1176,8 +1176,10 @@ function CanvasTrackerInner() {
   const [selectedAnimScriptId, setSelectedAnimScriptId] = React.useState(animScripts[0]?.id ?? '');
   const [isAnimating, setIsAnimating] = React.useState(false);
   const [showAnimEditor, setShowAnimEditor] = React.useState(false);
+  const [animStepIndex, setAnimStepIndex] = React.useState(-1);
   const animTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-  const animCancelledRef = React.useRef(false);
+  const animStopRef = React.useRef(false);
+  const animSnapshotsRef = React.useRef<Array<{ nodeId: string; data: CanvasNode['data']; position: { x: number; y: number }; hidden?: boolean }>>([]);
 
   React.useEffect(() => {
     try {
@@ -1220,24 +1222,77 @@ function CanvasTrackerInner() {
   }, [canvasMcpBaseUrl]);
 
   const applyAnimStep = React.useCallback((step: AnimationStep) => {
-    setNodes((nds) => nds.map((n) => {
-      if (n.id !== step.nodeId) return n;
-      if (step.action === 'highlight') return { ...n, data: { ...n.data, highlightedYears: step.value as string[] | undefined } } as CanvasNode;
-      if (step.action === 'unhighlight') return { ...n, data: { ...n.data, highlightedYears: undefined } } as CanvasNode;
-      if (step.action === 'show') return { ...n, hidden: false };
-      if (step.action === 'hide') return { ...n, hidden: true };
-      if (step.action === 'annotate') return { ...n, data: { ...n.data, annotation: step.value as string | undefined } } as CanvasNode;
-      if (step.action === 'unannotate') return { ...n, data: { ...n.data, annotation: undefined } } as CanvasNode;
-      if (step.action === 'move') {
-        const pos = step.value as { x: number; y: number } | undefined;
-        if (pos) return { ...n, position: { x: pos.x, y: pos.y } };
+    animSnapshotsRef.current = animSnapshotsRef.current.slice(0, animStepIndex + 1);
+    setNodes((nds) => {
+      const target = nds.find((n) => n.id === step.nodeId);
+      if (target) {
+        animSnapshotsRef.current.push({
+          nodeId: target.id,
+          data: { ...target.data },
+          position: { ...target.position },
+          hidden: target.hidden,
+        });
       }
-      return n;
+      return nds.map((n) => {
+        if (n.id !== step.nodeId) return n;
+        if (step.action === 'highlight') return { ...n, data: { ...n.data, highlightedYears: step.value as string[] | undefined } } as CanvasNode;
+        if (step.action === 'unhighlight') return { ...n, data: { ...n.data, highlightedYears: undefined } } as CanvasNode;
+        if (step.action === 'show') return { ...n, hidden: false };
+        if (step.action === 'hide') return { ...n, hidden: true };
+        if (step.action === 'annotate') return { ...n, data: { ...n.data, annotation: step.value as string | undefined } } as CanvasNode;
+        if (step.action === 'unannotate') return { ...n, data: { ...n.data, annotation: undefined } } as CanvasNode;
+        if (step.action === 'move') {
+          const pos = step.value as { x: number; y: number } | undefined;
+          if (pos) return { ...n, position: { x: pos.x, y: pos.y } };
+        }
+        return n;
+      });
+    });
+    setAnimStepIndex((prev) => prev + 1);
+  }, [setNodes, animStepIndex]);
+
+  const stepForward = React.useCallback(() => {
+    const script = animScripts.find((s) => s.id === selectedAnimScriptId);
+    if (!script) return;
+    const steps = script.steps.filter((s) => s.nodeId);
+    if (animStepIndex >= steps.length - 1) return;
+    applyAnimStep(steps[animStepIndex + 1]);
+  }, [animScripts, selectedAnimScriptId, animStepIndex, applyAnimStep]);
+
+  const stepBackward = React.useCallback(() => {
+    if (animStepIndex < 0) return;
+    const snap = animSnapshotsRef.current[animStepIndex];
+    if (!snap) { setAnimStepIndex((prev) => prev - 1); return; }
+    animSnapshotsRef.current = animSnapshotsRef.current.slice(0, animStepIndex);
+    setNodes((nds) => nds.map((n) => {
+      if (n.id !== snap.nodeId) return n;
+      return { ...n, data: { ...snap.data }, position: { ...snap.position }, hidden: snap.hidden } as CanvasNode;
     }));
-  }, [setNodes]);
+    setAnimStepIndex((prev) => prev - 1);
+  }, [animStepIndex, setNodes]);
+
+  const resetAnimation = React.useCallback(() => {
+    animStopRef.current = true;
+    if (animTimerRef.current !== null) {
+      clearTimeout(animTimerRef.current);
+      animTimerRef.current = null;
+    }
+    for (let i = animStepIndex; i >= 0; i--) {
+      const snap = animSnapshotsRef.current[i];
+      if (snap) {
+        setNodes((nds) => nds.map((n) => {
+          if (n.id !== snap.nodeId) return n;
+          return { ...n, data: { ...snap.data }, position: { ...snap.position }, hidden: snap.hidden } as CanvasNode;
+        }));
+      }
+    }
+    animSnapshotsRef.current = [];
+    setAnimStepIndex(-1);
+    setIsAnimating(false);
+  }, [animStepIndex, setNodes]);
 
   const stopAnimation = React.useCallback(() => {
-    animCancelledRef.current = true;
+    animStopRef.current = true;
     if (animTimerRef.current !== null) {
       clearTimeout(animTimerRef.current);
       animTimerRef.current = null;
@@ -1249,16 +1304,15 @@ function CanvasTrackerInner() {
     const script = animScripts.find((s) => s.id === selectedAnimScriptId);
     if (!script || script.steps.length === 0) return;
 
-    stopAnimation();
-    animCancelledRef.current = false;
+    resetAnimation();
+    animStopRef.current = false;
     setIsAnimating(true);
 
-    // skip steps with empty nodeId (invalid)
     const validSteps = script.steps.filter((s) => s.nodeId);
 
     let index = 0;
     const runStep = () => {
-      if (animCancelledRef.current || index >= validSteps.length) {
+      if (animStopRef.current || index >= validSteps.length) {
         setIsAnimating(false);
         return;
       }
@@ -1268,12 +1322,18 @@ function CanvasTrackerInner() {
     };
 
     animTimerRef.current = setTimeout(runStep, validSteps[0]?.delay ?? 0);
-  }, [animScripts, selectedAnimScriptId, stopAnimation, applyAnimStep]);
+  }, [animScripts, selectedAnimScriptId, resetAnimation, applyAnimStep]);
 
   const runAnimationRef = React.useRef(runAnimation);
   runAnimationRef.current = runAnimation;
   const stopAnimationRef = React.useRef(stopAnimation);
   stopAnimationRef.current = stopAnimation;
+  const stepForwardRef = React.useRef(stepForward);
+  stepForwardRef.current = stepForward;
+  const stepBackwardRef = React.useRef(stepBackward);
+  stepBackwardRef.current = stepBackward;
+  const resetAnimationRef = React.useRef(resetAnimation);
+  resetAnimationRef.current = resetAnimation;
 
   React.useEffect(() => {
     if (!canvasMcpBaseUrl) return;
@@ -1463,6 +1523,18 @@ function CanvasTrackerInner() {
 
     if (command.tool === 'anim_stop') {
       stopAnimationRef.current?.();
+    }
+
+    if (command.tool === 'anim_step_forward') {
+      stepForwardRef.current?.();
+    }
+
+    if (command.tool === 'anim_step_backward') {
+      stepBackwardRef.current?.();
+    }
+
+    if (command.tool === 'anim_reset') {
+      resetAnimationRef.current?.();
     }
 
     nextNodes = recomputeAggregationNodes(nextNodes, nextEdges);
@@ -1833,6 +1905,14 @@ function CanvasTrackerInner() {
           <button className={isAnimating ? 'danger' : ''} onClick={isAnimating ? stopAnimation : runAnimation} type="button" title={isAnimating ? 'Stop' : 'Play'}>
             {isAnimating ? '⏹' : '▶'}
           </button>
+          <button className="secondary" onClick={stepBackward} type="button" title="Previous step" disabled={animStepIndex < 0}>
+            ◀
+          </button>
+          <button className="secondary" onClick={stepForward} type="button" title="Next step">
+            ▶
+          </button>
+          <span className="step-counter">{animStepIndex + 1}/{animScripts.find((s) => s.id === selectedAnimScriptId)?.steps.filter((s) => s.nodeId).length ?? 0}</span>
+          <button className="secondary" onClick={resetAnimation} type="button" title="Reset animation">Reset</button>
           <button className="secondary" onClick={() => setShowAnimEditor(true)} type="button" title="Edit scripts" disabled={isAnimating}>
             Edit
           </button>

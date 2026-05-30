@@ -229,6 +229,21 @@ const tools = [
     description: 'Stop the currently playing animation.',
     inputSchema: { type: 'object', properties: {} },
   },
+  {
+    name: 'canvas_anim_step_forward',
+    description: 'Manually advance one step forward in the current script.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'canvas_anim_step_backward',
+    description: 'Manually step back one step in the current script.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'canvas_anim_reset',
+    description: 'Reset the animation, restoring all nodes to their pre-animation state.',
+    inputSchema: { type: 'object', properties: {} },
+  },
 ];
 
 function sendJson(response: ServerResponse, status: number, body: unknown) {
@@ -495,6 +510,17 @@ function handleMcpMessage(body: {
         id: body.id,
         result: {
           content: [{ type: 'text', text: 'Queued stop animation.' }],
+        },
+      };
+    }
+
+    if (name === 'canvas_anim_step_forward' || name === 'canvas_anim_step_backward' || name === 'canvas_anim_reset') {
+      enqueue(name, args);
+      return {
+        jsonrpc: '2.0',
+        id: body.id,
+        result: {
+          content: [{ type: 'text', text: `Queued ${name}.` }],
         },
       };
     }

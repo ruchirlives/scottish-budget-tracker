@@ -801,6 +801,13 @@ th {
   vertical-align: middle;
 }
 
+.step-counter {
+  font-size: 0.76rem;
+  color: #475569;
+  margin: 0 2px;
+  vertical-align: middle;
+}
+
 .anim-editor-modal {
   max-width: 600px;
   width: 90%;
