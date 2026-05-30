@@ -51,6 +51,10 @@ type BudgetRow = {
   total: number;
 };
 
+type EnrichedBudgetRow = BudgetRow & {
+  flowStatuses: string[];
+};
+
 type AggregateRow = {
   name: string;
   resource: number;
@@ -73,7 +77,7 @@ type AggregationNodeData = {
 
 type RuleCondition = {
   id: string;
-  field: 'portfolio' | 'canonicalArea' | 'area' | 'budgetLine' | 'year' | 'total';
+  field: 'portfolio' | 'canonicalArea' | 'area' | 'budgetLine' | 'year' | 'total' | 'flowStatus';
   operator: 'contains' | 'equals' | 'greater_than' | 'less_than' | 'matches_regex';
   value: string;
 };
@@ -130,6 +134,11 @@ type FlowCandidate = {
 const rows = level4Data as BudgetRow[];
 const flows = flowData.flows as BudgetFlow[];
 const flowCandidates = candidateData.candidates as FlowCandidate[];
+const flowStatusesByRowKey = buildFlowStatuses();
+const enrichedRows = rows.map((row) => ({
+  ...row,
+  flowStatuses: Array.from(flowStatusesByRowKey.get(rowKey(row)) ?? ['unmapped']),
+}));
 const years = Array.from(new Set(rows.map((row) => row.year))).sort();
 
 function flowToCandidate(f: BudgetFlow): FlowCandidate {
@@ -160,6 +169,30 @@ const allBudgetLines: FlowCandidate[] = [
 const latestYear = years.at(-1) ?? '';
 const palette = ['#0065bd', '#2d7d46', '#d16b00', '#6f4bb2', '#c0392b', '#0f8b8d', '#5c6670'];
 const budgetCanvasStorageKey = 'scottish-budget-tracker:canvas:v1';
+
+function rowKey(row: Pick<BudgetRow, 'year' | 'canonicalArea' | 'portfolio'>) {
+  return `${row.year}||${row.canonicalArea}||${row.portfolio}`;
+}
+
+function addFlowStatus(target: Map<string, Set<string>>, key: string, status: string) {
+  target.set(key, new Set([...(target.get(key) ?? []), status]));
+}
+
+function buildFlowStatuses() {
+  const statuses = new Map<string, Set<string>>();
+  for (const flow of flows) {
+    for (const link of flow.links) {
+      addFlowStatus(statuses, rowKey(link), flow.type || 'continuation');
+    }
+  }
+  for (const candidate of flowCandidates) {
+    for (const link of [...candidate.from, ...candidate.to]) {
+      addFlowStatus(statuses, rowKey(link), candidate.type);
+      addFlowStatus(statuses, rowKey(link), `candidate:${candidate.type}`);
+    }
+  }
+  return statuses;
+}
 
 function money(value: number) {
   return new Intl.NumberFormat('en-GB', {
@@ -483,15 +516,32 @@ function recomputeAggregationNodes(nodes: CanvasNode[], edges: Edge[]) {
   });
 }
 
-function valueForRuleField(row: BudgetRow, field: RuleCondition['field']) {
+function valueForRuleField(row: EnrichedBudgetRow, field: RuleCondition['field']) {
+  if (field === 'flowStatus') return row.flowStatuses;
   if (field === 'total') return row.total;
   return row[field];
 }
 
-function conditionMatches(row: BudgetRow, condition: RuleCondition) {
+function conditionMatches(row: EnrichedBudgetRow, condition: RuleCondition): boolean {
   const expected = condition.value.trim();
   if (!expected) return true;
   const actual = valueForRuleField(row, condition.field);
+
+  if (Array.isArray(actual)) {
+    return actual.some((value) => {
+      const actualText = String(value).toLowerCase();
+      const expectedText = expected.toLowerCase();
+      if (condition.operator === 'equals') return actualText === expectedText;
+      if (condition.operator === 'matches_regex') {
+        try {
+          return new RegExp(expected, 'i').test(String(value));
+        } catch {
+          return false;
+        }
+      }
+      return actualText.includes(expectedText);
+    });
+  }
 
   if (typeof actual === 'number') {
     const expectedNumber = Number(expected);
@@ -515,7 +565,7 @@ function conditionMatches(row: BudgetRow, condition: RuleCondition) {
 }
 
 function rowsForRule(conditions: RuleCondition[]) {
-  return rows.filter((row) => conditions.every((condition) => conditionMatches(row, condition)));
+  return enrichedRows.filter((row) => conditions.every((condition) => conditionMatches(row, condition)));
 }
 
 function seriesForRule(conditions: RuleCondition[]) {
@@ -1439,7 +1489,7 @@ function handleCanvasNodeMouseDown(event: React.MouseEvent, nodeId: string) {
   toggleCanvasNodeSelection?.(nodeId);
 }
 
-const ruleFields: RuleCondition['field'][] = ['portfolio', 'canonicalArea', 'area', 'budgetLine', 'year', 'total'];
+const ruleFields: RuleCondition['field'][] = ['portfolio', 'canonicalArea', 'area', 'budgetLine', 'year', 'total', 'flowStatus'];
 const ruleOperators: RuleCondition['operator'][] = ['contains', 'equals', 'greater_than', 'less_than', 'matches_regex'];
 
 function RuleAggregationDialog({
