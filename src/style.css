@@ -665,6 +665,10 @@ th {
   font-weight: 700;
 }
 
+.hidden-file-input {
+  display: none;
+}
+
 .flow-canvas {
   background: #f8fafc;
   border: 1px solid #e2e8f0;

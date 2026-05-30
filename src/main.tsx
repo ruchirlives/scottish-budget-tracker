@@ -989,6 +989,7 @@ function CanvasTrackerInner() {
   const [nodes, setNodes, onNodesChange] = useNodesState<CanvasNode>(refreshBudgetLineNodeData(initialCanvas.nodes));
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialCanvas.edges);
   const [renamingNodeId, setRenamingNodeId] = React.useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
   const availableLines = React.useMemo(() => (
     aggregateBy(rows, (row) => `${row.canonicalArea}||${row.portfolio}`)
@@ -1082,6 +1083,42 @@ function CanvasTrackerInner() {
     window.localStorage.removeItem(budgetCanvasStorageKey);
   }
 
+  function saveCanvasFile() {
+    const payload = {
+      version: 1,
+      savedAt: new Date().toISOString(),
+      app: 'scottish-budget-tracker',
+      nodes,
+      edges,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `scottish-budget-canvas-${new Date().toISOString().slice(0, 10)}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function loadCanvasFile(file: File | undefined) {
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text) as Partial<CanvasStorage> & { version?: number };
+      if (!Array.isArray(parsed.nodes) || !Array.isArray(parsed.edges)) {
+        throw new Error('Canvas file must contain nodes and edges arrays.');
+      }
+      const loadedNodes = refreshBudgetLineNodeData(parsed.nodes as CanvasNode[]);
+      const loadedEdges = parsed.edges as Edge[];
+      setNodes(recomputeAggregationNodes(loadedNodes, loadedEdges));
+      setEdges(loadedEdges);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Unable to load canvas file.');
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
+
   function renameAggregation(value: string) {
     if (!renamingNodeId) return;
     const label = value.trim();
@@ -1132,6 +1169,19 @@ function CanvasTrackerInner() {
           <button className="secondary" onClick={clearCanvas} type="button">
             Clear canvas
           </button>
+          <button className="secondary" onClick={saveCanvasFile} type="button">
+            Save
+          </button>
+          <button className="secondary" onClick={() => fileInputRef.current?.click()} type="button">
+            Load
+          </button>
+          <input
+            ref={fileInputRef}
+            className="hidden-file-input"
+            type="file"
+            accept="application/json,.json"
+            onChange={(event) => void loadCanvasFile(event.target.files?.[0])}
+          />
           <span>{nodes.length} nodes | {edges.length} links</span>
         </div>
         <div className="flow-canvas" onDragOver={handleDragOver} onDrop={handleDrop}>
