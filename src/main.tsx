@@ -363,6 +363,67 @@ function sumSeries(seriesList: Array<Array<{ year: string; amount: number }>>) {
 function latestSeriesAmount(series: Array<{ year: string; amount: number }>) {
   return series.at(-1)?.amount ?? 0;
 }
+
+function hasCanvasPath(edges: Edge[], source: string, target: string) {
+  const nextBySource = new Map<string, string[]>();
+  for (const edge of edges) {
+    nextBySource.set(edge.source, [...(nextBySource.get(edge.source) ?? []), edge.target]);
+  }
+
+  const visited = new Set<string>();
+  const stack = [source];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (!current || visited.has(current)) continue;
+    if (current === target) return true;
+    visited.add(current);
+    stack.push(...(nextBySource.get(current) ?? []));
+  }
+  return false;
+}
+
+function recomputeAggregationNodes(nodes: CanvasNode[], edges: Edge[]) {
+  const nodeById = new Map(nodes.map((node) => [node.id, node]));
+  const incomingByTarget = new Map<string, Edge[]>();
+  for (const edge of edges) {
+    incomingByTarget.set(edge.target, [...(incomingByTarget.get(edge.target) ?? []), edge]);
+  }
+
+  const seriesCache = new Map<string, Array<{ year: string; amount: number }>>();
+
+  function seriesForNode(nodeId: string, visiting = new Set<string>()): Array<{ year: string; amount: number }> {
+    const cached = seriesCache.get(nodeId);
+    if (cached) return cached;
+
+    const node = nodeById.get(nodeId);
+    if (!node) return sumSeries([]);
+    if (node.type === 'budgetLine') {
+      const series = (node.data as BudgetLineNodeData).series;
+      seriesCache.set(nodeId, series);
+      return series;
+    }
+
+    if (visiting.has(nodeId)) return sumSeries([]);
+    const nextVisiting = new Set(visiting);
+    nextVisiting.add(nodeId);
+    const inputSeries = (incomingByTarget.get(nodeId) ?? []).map((edge) => seriesForNode(edge.source, nextVisiting));
+    const series = sumSeries(inputSeries);
+    seriesCache.set(nodeId, series);
+    return series;
+  }
+
+  return nodes.map((node) => {
+    if (node.type !== 'aggregation') return node;
+    return {
+      ...node,
+      data: {
+        ...(node.data as AggregationNodeData),
+        inputCount: incomingByTarget.get(node.id)?.length ?? 0,
+        series: seriesForNode(node.id),
+      },
+    };
+  });
+}
 function BudgetTracker() {
   const [selectedYear, setSelectedYear] = React.useState(latestYear);
   const [query, setQuery] = React.useState('');
@@ -909,38 +970,20 @@ function CanvasTrackerInner() {
   ), [query]);
 
   React.useEffect(() => {
-    setNodes((currentNodes) => {
-      const inputSeriesByAggregation = new Map<string, Array<Array<{ year: string; amount: number }>>>();
-      for (const edge of edges) {
-        const source = currentNodes.find((node) => node.id === edge.source);
-        const target = currentNodes.find((node) => node.id === edge.target);
-        if (!source || !target || target.type !== 'aggregation') continue;
-        const sourceSeries = source.type === 'budgetLine'
-          ? (source.data as BudgetLineNodeData).series
-          : (source.data as AggregationNodeData).series;
-        inputSeriesByAggregation.set(target.id, [...(inputSeriesByAggregation.get(target.id) ?? []), sourceSeries]);
-      }
-
-      return currentNodes.map((node) => {
-        if (node.type !== 'aggregation') return node;
-        const inputSeries = inputSeriesByAggregation.get(node.id) ?? [];
-        return {
-          ...node,
-          data: {
-            ...(node.data as AggregationNodeData),
-            inputCount: inputSeries.length,
-            series: sumSeries(inputSeries),
-          },
-        };
-      });
-    });
+    setNodes((currentNodes) => recomputeAggregationNodes(currentNodes, edges));
   }, [edges, setNodes]);
 
   const onConnect = React.useCallback((connection: Connection) => {
-    setEdges((currentEdges) => addEdge({
-      ...connection,
-      style: { stroke: '#0065bd', strokeWidth: 2 },
-    }, currentEdges));
+    if (!connection.source || !connection.target || connection.source === connection.target) return;
+    setEdges((currentEdges) => {
+      if (hasCanvasPath(currentEdges, connection.target!, connection.source!)) {
+        return currentEdges;
+      }
+      return addEdge({
+        ...connection,
+        style: { stroke: '#0065bd', strokeWidth: 2 },
+      }, currentEdges);
+    });
   }, [setEdges]);
 
   function handleDragStart(event: React.DragEvent<HTMLButtonElement>, line: { canonicalArea: string; portfolio: string; series: Array<{ year: string; amount: number }> }) {
