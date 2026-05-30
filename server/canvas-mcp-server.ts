@@ -1,5 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 
 type CanvasCommand = {
   id: string;
@@ -7,24 +8,71 @@ type CanvasCommand = {
   arguments?: Record<string, unknown>;
 };
 
+type BudgetRow = {
+  year: string;
+  sheet: string;
+  area: string;
+  canonicalArea: string;
+  portfolio: string;
+  budgetLine: string;
+  resource: number;
+  capital: number;
+  total: number;
+};
+
+type BudgetLine = {
+  canonicalArea: string;
+  portfolio: string;
+  areas: string[];
+  sheets: string[];
+  budgetLines: string[];
+  latestYear: string;
+  latestTotal: number;
+  years: Array<{ year: string; amount: number }>;
+};
+
 const port = Number(process.env.PORT ?? process.env.MCP_PORT ?? 8787);
 const commands: CanvasCommand[] = [];
 let lastCanvasState: unknown = null;
 const sseSessions = new Map<string, ServerResponse>();
+const budgetRows = JSON.parse(readFileSync(new URL('../data/budget-level-4.normalized.json', import.meta.url), 'utf8')) as BudgetRow[];
+const budgetYears = Array.from(new Set(budgetRows.map((row) => row.year))).sort();
+const latestBudgetYear = budgetYears.at(-1) ?? '';
+const budgetLines = buildBudgetLines();
 
 const tools = [
   {
     name: 'canvas_add_budget_line',
-    description: 'Add or move a budget line node on the canvas.',
+    description: 'Add or move an existing budget line node from the normalized budget data onto the canvas. Use query when you do not know the exact canonicalArea and portfolio.',
     inputSchema: {
       type: 'object',
       properties: {
+        query: { type: 'string', description: 'Search text, for example "NHS Pension Scheme".' },
         canonicalArea: { type: 'string' },
         portfolio: { type: 'string' },
+        area: { type: 'string' },
+        sheet: { type: 'string' },
+        budgetLine: { type: 'string' },
+        year: { type: 'string' },
         x: { type: 'number' },
         y: { type: 'number' },
       },
-      required: ['canonicalArea', 'portfolio'],
+    },
+  },
+  {
+    name: 'canvas_search_budget_lines',
+    description: 'Search existing normalized budget lines available in the canvas sidebar.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string' },
+        field: {
+          type: 'string',
+          enum: ['all', 'year', 'sheet', 'area', 'canonicalArea', 'portfolio', 'budgetLine', 'resource', 'capital', 'total'],
+        },
+        limit: { type: 'number' },
+      },
+      required: ['query'],
     },
   },
   {
@@ -121,6 +169,102 @@ function readBody(request: IncomingMessage) {
   });
 }
 
+function buildBudgetLines() {
+  const byLine = new Map<string, BudgetRow[]>();
+  for (const row of budgetRows) {
+    const key = `${row.canonicalArea}||${row.portfolio}`;
+    byLine.set(key, [...(byLine.get(key) ?? []), row]);
+  }
+
+  return Array.from(byLine.entries()).map(([key, rowsForLine]) => {
+    const [canonicalArea, portfolio] = key.split('||');
+    const years = budgetYears.map((year) => ({
+      year,
+      amount: rowsForLine
+        .filter((row) => row.year === year)
+        .reduce((sum, row) => sum + row.total, 0),
+    }));
+    return {
+      canonicalArea,
+      portfolio,
+      areas: Array.from(new Set(rowsForLine.map((row) => row.area))).sort(),
+      sheets: Array.from(new Set(rowsForLine.map((row) => row.sheet))).sort(),
+      budgetLines: Array.from(new Set(rowsForLine.map((row) => row.budgetLine))).sort(),
+      latestYear: latestBudgetYear,
+      latestTotal: years.find((year) => year.year === latestBudgetYear)?.amount ?? 0,
+      years,
+    };
+  });
+}
+
+function normalizeSearchText(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+function textForBudgetLineField(line: BudgetLine, field: string) {
+  if (field === 'year') return line.years.map((year) => `${year.year} ${year.amount}`).join(' ');
+  if (field === 'sheet') return line.sheets.join(' ');
+  if (field === 'area') return line.areas.join(' ');
+  if (field === 'canonicalArea') return line.canonicalArea;
+  if (field === 'portfolio') return line.portfolio;
+  if (field === 'budgetLine') return line.budgetLines.join(' ');
+  if (field === 'resource' || field === 'capital' || field === 'total') {
+    const matchingRows = budgetRows.filter((row) => row.canonicalArea === line.canonicalArea && row.portfolio === line.portfolio);
+    return matchingRows.map((row) => String(row[field as 'resource' | 'capital' | 'total'])).join(' ');
+  }
+  return [
+    line.portfolio,
+    line.canonicalArea,
+    line.areas.join(' '),
+    line.sheets.join(' '),
+    line.budgetLines.join(' '),
+    line.years.map((year) => `${year.year} ${year.amount}`).join(' '),
+  ].join(' ');
+}
+
+function scoreBudgetLine(line: BudgetLine, query: string, field = 'all') {
+  const normalizedQuery = normalizeSearchText(query);
+  const portfolio = normalizeSearchText(line.portfolio);
+  const canonicalArea = normalizeSearchText(line.canonicalArea);
+  const haystack = normalizeSearchText(textForBudgetLineField(line, field));
+  if (!normalizedQuery) return 0;
+  if (field === 'all' && portfolio === normalizedQuery) return 1000;
+  if (field === 'all' && `${canonicalArea} ${portfolio}` === normalizedQuery) return 950;
+  if (field === 'all' && portfolio.includes(normalizedQuery)) return 800 - portfolio.indexOf(normalizedQuery);
+  if (haystack === normalizedQuery) return 760;
+  if (haystack.includes(normalizedQuery)) return 600 - haystack.indexOf(normalizedQuery);
+  const words = normalizedQuery.split(/\s+/).filter(Boolean);
+  return words.reduce((score, word) => score + (haystack.includes(word) ? 25 : 0), 0);
+}
+
+function searchBudgetLines(query: string, limit = 10, field = 'all') {
+  return budgetLines
+    .map((line) => ({ line, score: scoreBudgetLine(line, query, field) }))
+    .filter((result) => result.score > 0)
+    .sort((a, b) => b.score - a.score || b.line.latestTotal - a.line.latestTotal)
+    .slice(0, Math.max(1, Math.min(limit, 50)))
+    .map((result) => result.line);
+}
+
+function resolveBudgetLine(args: Record<string, unknown>) {
+  const canonicalArea = typeof args.canonicalArea === 'string' ? args.canonicalArea : '';
+  const portfolio = typeof args.portfolio === 'string' ? args.portfolio : '';
+  const exact = budgetLines.find((line) => line.canonicalArea === canonicalArea && line.portfolio === portfolio);
+  if (exact) return exact;
+
+  const query = typeof args.query === 'string' && args.query.trim()
+    ? args.query
+    : [
+      args.year,
+      args.sheet,
+      args.area,
+      canonicalArea,
+      portfolio,
+      args.budgetLine,
+    ].filter((value) => typeof value === 'string' && value.trim()).join(' ');
+  return searchBudgetLines(query, 1, 'all')[0] ?? null;
+}
+
 function enqueue(name: string, args: Record<string, unknown> = {}) {
   const command = { id: randomUUID(), tool: name, arguments: args };
   commands.push(command);
@@ -160,6 +304,50 @@ function handleMcpMessage(body: {
         jsonrpc: '2.0',
         id: body.id,
         result: { content: [{ type: 'text', text: JSON.stringify(lastCanvasState ?? { nodes: [], edges: [] }, null, 2) }] },
+      };
+    }
+
+    if (name === 'canvas_search_budget_lines') {
+      const query = String(args.query ?? '');
+      const field = String(args.field ?? 'all');
+      const limit = typeof args.limit === 'number' ? args.limit : 10;
+      return {
+        jsonrpc: '2.0',
+        id: body.id,
+        result: {
+          content: [{
+            type: 'text',
+            text: JSON.stringify(searchBudgetLines(query, limit, field), null, 2),
+          }],
+        },
+      };
+    }
+
+    if (name === 'canvas_add_budget_line') {
+      const line = resolveBudgetLine(args);
+      if (!line) {
+        return {
+          jsonrpc: '2.0',
+          id: body.id,
+          error: { code: -32602, message: 'No matching budget line found in the normalized budget data.' },
+        };
+      }
+
+      const command = enqueue(name, {
+        ...args,
+        canonicalArea: line.canonicalArea,
+        portfolio: line.portfolio,
+        id: `line:${line.canonicalArea}:${line.portfolio}`,
+      });
+      return {
+        jsonrpc: '2.0',
+        id: body.id,
+        result: {
+          content: [{
+            type: 'text',
+            text: `Queued ${line.portfolio} under ${line.canonicalArea} (${command.id}). The browser canvas will refresh on its next poll.`,
+          }],
+        },
       };
     }
 

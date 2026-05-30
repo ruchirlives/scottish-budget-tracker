@@ -1181,6 +1181,7 @@ function CanvasTrackerInner() {
       if (canonicalArea && portfolio) {
         const id = String(args.id ?? `line:${canonicalArea}:${portfolio}`);
         const existing = nextNodes.find((node) => node.id === id);
+        const series = seriesForBudgetLine(canonicalArea, portfolio);
         if (!existing) {
           nextNodes = [
             ...nextNodes,
@@ -1189,12 +1190,23 @@ function CanvasTrackerInner() {
               type: 'budgetLine',
               position: requestedPosition,
               data: {
-                label: canonicalArea,
+                label: portfolio,
                 canonicalArea,
-                series: seriesForBudgetLine(canonicalArea, portfolio),
+                series,
               },
             } as CanvasNode,
           ];
+        } else {
+          nextNodes = nextNodes.map((node) => node.id === id ? {
+            ...node,
+            position: requestedPosition,
+            data: {
+              ...(node.data as BudgetLineNodeData),
+              label: portfolio,
+              canonicalArea,
+              series,
+            },
+          } as CanvasNode : node);
         }
       }
     }
@@ -1415,6 +1427,24 @@ function CanvasTrackerInner() {
       : [...currentNodes, nextNode]);
   }
 
+  function labelForAggregationSelection(selectedNodes: CanvasNode[], fallback: string) {
+    if (selectedNodes.length === 0) return fallback;
+
+    const budgetLineParents = selectedNodes
+      .filter((node): node is BudgetLineNode => node.type === 'budgetLine')
+      .map((node) => node.data.canonicalArea);
+    const uniqueParents = Array.from(new Set(budgetLineParents));
+    if (uniqueParents.length === 1 && selectedNodes.length > 1) {
+      return uniqueParents[0];
+    }
+
+    const labels = selectedNodes.map((node) => node.data.label).filter(Boolean);
+    const uniqueLabels = Array.from(new Set(labels));
+    const visibleLabels = uniqueLabels.slice(0, 2).join(' + ');
+    const remainingCount = uniqueLabels.length - 2;
+    return remainingCount > 0 ? `${visibleLabels} + ${remainingCount} more` : visibleLabels || fallback;
+  }
+
   function addAggregation() {
     const selectedNodes = nodes.filter((node) => node.selected);
     const selectedBounds = selectedNodes.reduce((bounds, node) => ({
@@ -1425,6 +1455,7 @@ function CanvasTrackerInner() {
     }), { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity });
     const id = `aggregation:${crypto.randomUUID()}`;
     const aggregationCount = nodes.filter((node) => node.type === 'aggregation').length;
+    const fallbackLabel = `Aggregation ${aggregationCount + 1}`;
     const nextNode: AggregationNode = {
       id,
       type: 'aggregation',
@@ -1432,7 +1463,7 @@ function CanvasTrackerInner() {
         ? { x: selectedBounds.maxX + 320, y: selectedBounds.minY }
         : { x: 520, y: 160 + aggregationCount * 90 },
       data: {
-        label: `Aggregation ${aggregationCount + 1}`,
+        label: labelForAggregationSelection(selectedNodes, fallbackLabel),
         inputCount: 0,
         series: sumSeries([]),
       },
