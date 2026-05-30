@@ -1492,6 +1492,13 @@ function handleCanvasNodeMouseDown(event: React.MouseEvent, nodeId: string) {
 const ruleFields: RuleCondition['field'][] = ['portfolio', 'canonicalArea', 'area', 'budgetLine', 'year', 'total', 'flowStatus'];
 const ruleOperators: RuleCondition['operator'][] = ['contains', 'equals', 'greater_than', 'less_than', 'matches_regex'];
 const flowStatusOptions = Array.from(new Set(enrichedRows.flatMap((row) => row.flowStatuses))).sort();
+const ruleValueOptions: Partial<Record<RuleCondition['field'], string[]>> = {
+  portfolio: Array.from(new Set(rows.map((row) => row.portfolio))).sort(),
+  canonicalArea: Array.from(new Set(rows.map((row) => row.canonicalArea))).sort(),
+  area: Array.from(new Set(rows.map((row) => row.area))).sort(),
+  year: years,
+  flowStatus: flowStatusOptions,
+};
 
 function RuleAggregationDialog({
   data,
@@ -1535,11 +1542,13 @@ function RuleAggregationDialog({
               <select value={condition.operator} onChange={(event) => updateCondition(condition.id, { operator: event.target.value as RuleCondition['operator'] })}>
                 {ruleOperators.map((operator) => <option key={operator} value={operator}>{operator}</option>)}
               </select>
-              {condition.field === 'flowStatus' ? (
+              {ruleValueOptions[condition.field] ? (
                 <select value={condition.value} onChange={(event) => updateCondition(condition.id, { value: event.target.value, operator: condition.operator === 'contains' ? 'equals' : condition.operator })}>
-                  <option value="">Any status</option>
-                  {flowStatusOptions.map((status) => <option key={status} value={status}>{status}</option>)}
+                  <option value="">Any {condition.field}</option>
+                  {ruleValueOptions[condition.field]?.map((value) => <option key={value} value={value}>{value}</option>)}
                 </select>
+              ) : condition.field === 'total' ? (
+                <input type="number" value={condition.value} onChange={(event) => updateCondition(condition.id, { value: event.target.value })} />
               ) : (
                 <input value={condition.value} onChange={(event) => updateCondition(condition.id, { value: event.target.value })} />
               )}
