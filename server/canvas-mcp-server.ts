@@ -135,6 +135,43 @@ const tools = [
     description: 'Return the latest canvas state reported by the browser app.',
     inputSchema: { type: 'object', properties: {} },
   },
+  {
+    name: 'canvas_move_node',
+    description: 'Move an existing canvas node to a new position.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        nodeId: { type: 'string' },
+        x: { type: 'number' },
+        y: { type: 'number' },
+      },
+      required: ['nodeId'],
+    },
+  },
+  {
+    name: 'canvas_highlight_years',
+    description: 'Highlight specific year rows inside a canvas node.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        nodeId: { type: 'string' },
+        years: { type: 'array', items: { type: 'string' }, description: 'Array of year strings to highlight, e.g. ["2024-25","2025-26"]. Empty array clears highlights.' },
+      },
+      required: ['nodeId'],
+    },
+  },
+  {
+    name: 'canvas_annotate_node',
+    description: 'Add or update an annotation text on a canvas node.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        nodeId: { type: 'string' },
+        annotation: { type: 'string', description: 'Annotation text to display on the node. Empty string clears the annotation.' },
+      },
+      required: ['nodeId', 'annotation'],
+    },
+  },
 ];
 
 function sendJson(response: ServerResponse, status: number, body: unknown) {

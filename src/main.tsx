@@ -67,12 +67,16 @@ type BudgetLineNodeData = {
   label: string;
   canonicalArea: string;
   series: Array<{ year: string; amount: number }>;
+  highlightedYears?: string[];
+  annotation?: string;
 };
 
 type AggregationNodeData = {
   label: string;
   series: Array<{ year: string; amount: number }>;
   inputCount: number;
+  highlightedYears?: string[];
+  annotation?: string;
 };
 
 type RuleCondition = {
@@ -87,6 +91,8 @@ type RuleAggregationNodeData = {
   conditions: RuleCondition[];
   series: Array<{ year: string; amount: number }>;
   matchCount: number;
+  highlightedYears?: string[];
+  annotation?: string;
 };
 
 type BudgetLineNode = Node<BudgetLineNodeData, 'budgetLine'>;
@@ -1278,6 +1284,33 @@ function CanvasTrackerInner() {
       }
     }
 
+    if (command.tool === 'canvas_move_node') {
+      const id = String(args.nodeId ?? '');
+      const x = typeof args.x === 'number' ? args.x : undefined;
+      const y = typeof args.y === 'number' ? args.y : undefined;
+      if (id && (x !== undefined || y !== undefined)) {
+        nextNodes = nextNodes.map((node) => (
+          node.id === id ? { ...node, position: { x: x ?? node.position.x, y: y ?? node.position.y } } : node
+        ));
+      }
+    }
+
+    if (command.tool === 'canvas_highlight_years') {
+      const id = String(args.nodeId ?? '');
+      const years = Array.isArray(args.years) ? args.years.map(String) : [];
+      if (id) {
+        nextNodes = nextNodes.map((node) => node.id !== id ? node : ({ ...node, data: { ...node.data, highlightedYears: years.length > 0 ? years : undefined } } as CanvasNode));
+      }
+    }
+
+    if (command.tool === 'canvas_annotate_node') {
+      const id = String(args.nodeId ?? '');
+      const annotation = String(args.annotation ?? '');
+      if (id) {
+        nextNodes = nextNodes.map((node) => node.id !== id ? node : ({ ...node, data: { ...node.data, annotation: annotation || undefined } } as CanvasNode));
+      }
+    }
+
     nextNodes = recomputeAggregationNodes(nextNodes, nextEdges);
     nodesRef.current = nextNodes;
     edgesRef.current = nextEdges;
@@ -1694,7 +1727,8 @@ function BudgetLineCanvasNode({ id, data }: NodeProps<BudgetLineNode>) {
     <div className="canvas-node budget-node" onMouseDownCapture={(event) => handleCanvasNodeMouseDown(event, id)}>
       <strong>{data.label}</strong>
       <span>{data.canonicalArea}</span>
-      <SeriesMiniTable series={data.series} />
+      <SeriesMiniTable series={data.series} highlightedYears={data.highlightedYears} />
+      {data.annotation && <div className="node-annotation">{data.annotation}</div>}
       <Handle type="source" position={Position.Right} />
     </div>
   );
@@ -1706,7 +1740,8 @@ function AggregationCanvasNode({ id, data }: NodeProps<AggregationNode>) {
       <Handle type="target" position={Position.Left} />
       <strong>{data.label}</strong>
       <span>{data.inputCount} inputs</span>
-      <SeriesMiniTable series={data.series} />
+      <SeriesMiniTable series={data.series} highlightedYears={data.highlightedYears} />
+      {data.annotation && <div className="node-annotation">{data.annotation}</div>}
       <Handle type="source" position={Position.Right} />
     </div>
   );
@@ -1718,7 +1753,8 @@ function RuleAggregationCanvasNode({ id, data }: NodeProps<RuleAggregationNode>)
       <strong>{data.label}</strong>
       <span>{data.matchCount} matched rows</span>
       <small>{data.conditions.map((condition) => `${condition.field} ${condition.operator} "${condition.value}"`).join(' AND ')}</small>
-      <SeriesMiniTable series={data.series} />
+      <SeriesMiniTable series={data.series} highlightedYears={data.highlightedYears} />
+      {data.annotation && <div className="node-annotation">{data.annotation}</div>}
       <Handle type="source" position={Position.Right} />
     </div>
   );
@@ -1814,12 +1850,12 @@ function RuleAggregationDialog({
   );
 }
 
-function SeriesMiniTable({ series }: { series: Array<{ year: string; amount: number }> }) {
+function SeriesMiniTable({ series, highlightedYears }: { series: Array<{ year: string; amount: number }>; highlightedYears?: string[] }) {
   return (
     <table>
       <tbody>
         {series.map((point) => (
-          <tr key={point.year}>
+          <tr key={point.year} className={highlightedYears?.includes(point.year) ? 'highlighted' : ''}>
             <td>{point.year}</td>
             <td>{compactMoney(point.amount)}</td>
           </tr>
