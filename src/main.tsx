@@ -1120,7 +1120,7 @@ function CanvasTrackerInner() {
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialCanvas.edges);
   const nodesRef = React.useRef<CanvasNode[]>(nodes);
   const edgesRef = React.useRef<Edge[]>(edges);
-  const mcpCursorRef = React.useRef(0);
+  const mcpCursorRef = React.useRef<string | null>(null);
   const [renamingNodeId, setRenamingNodeId] = React.useState<string | null>(null);
   const [editingRuleNodeId, setEditingRuleNodeId] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
@@ -1189,8 +1189,8 @@ function CanvasTrackerInner() {
               type: 'budgetLine',
               position: requestedPosition,
               data: {
+                label: canonicalArea,
                 canonicalArea,
-                portfolio,
                 series: seriesForBudgetLine(canonicalArea, portfolio),
               },
             } as CanvasNode,
@@ -1211,6 +1211,7 @@ function CanvasTrackerInner() {
           data: {
             label: String(args.label ?? 'Aggregation'),
             series: [],
+            inputCount: 0,
           },
         } as CanvasNode,
       ];
@@ -1225,6 +1226,7 @@ function CanvasTrackerInner() {
     if (command.tool === 'canvas_add_rule') {
       const id = String(args.id ?? `rule:${Date.now()}`);
       const conditions = Array.isArray(args.conditions) ? args.conditions : [];
+      const result = seriesForRule(conditions as RuleCondition[]);
       nextNodes = [
         ...nextNodes,
         {
@@ -1234,7 +1236,8 @@ function CanvasTrackerInner() {
           data: {
             label: String(args.label ?? 'Rule Aggregation'),
             conditions: conditions as RuleCondition[],
-            series: [],
+            matchCount: result.matchCount,
+            series: result.series,
           },
         } as CanvasNode,
       ];
@@ -1252,12 +1255,12 @@ function CanvasTrackerInner() {
     }
 
     if (command.tool === 'canvas_rename_node') {
-      const id = String(args.id ?? '');
+      const id = String(args.id ?? args.nodeId ?? '');
       const label = String(args.label ?? '');
       if (id && label) {
         nextNodes = nextNodes.map((node) => (
           node.id === id && (node.type === 'aggregation' || node.type === 'ruleAggregation')
-            ? { ...node, data: { ...node.data, label } }
+            ? ({ ...node, data: { ...node.data, label } } as CanvasNode)
             : node
         ));
       }
@@ -1281,12 +1284,13 @@ function CanvasTrackerInner() {
       }
       inFlight = true;
       try {
-        const response = await window.fetch(`${canvasMcpBaseUrl}/canvas/commands?since=${mcpCursorRef.current}`);
+        const sinceQuery = mcpCursorRef.current ? `?since=${encodeURIComponent(mcpCursorRef.current)}` : '';
+        const response = await window.fetch(`${canvasMcpBaseUrl}/canvas/commands${sinceQuery}`);
         if (!response.ok) {
           return;
         }
-        const payload = await response.json() as { cursor?: number; commands?: Array<{ tool: string; arguments?: Record<string, unknown> }> };
-        if (typeof payload.cursor === 'number') {
+        const payload = await response.json() as { cursor?: string | null; commands?: Array<{ tool: string; arguments?: Record<string, unknown> }> };
+        if (typeof payload.cursor === 'string') {
           mcpCursorRef.current = payload.cursor;
         }
         if (payload.commands?.length) {

@@ -3,13 +3,14 @@ import { randomUUID } from 'node:crypto';
 
 type CanvasCommand = {
   id: string;
-  name: string;
+  tool: string;
   arguments?: Record<string, unknown>;
 };
 
 const port = Number(process.env.PORT ?? process.env.MCP_PORT ?? 8787);
 const commands: CanvasCommand[] = [];
 let lastCanvasState: unknown = null;
+const sseClients = new Set<ServerResponse>();
 
 const tools = [
   {
@@ -98,6 +99,16 @@ function sendJson(response: ServerResponse, status: number, body: unknown) {
   response.end(JSON.stringify(body));
 }
 
+function sendSse(response: ServerResponse, event: string, data: unknown) {
+  response.write(`event: ${event}\n`);
+  response.write(`data: ${JSON.stringify(data)}\n\n`);
+}
+
+function sendSseText(response: ServerResponse, event: string, data: string) {
+  response.write(`event: ${event}\n`);
+  response.write(`data: ${data}\n\n`);
+}
+
 function readBody(request: IncomingMessage) {
   return new Promise<string>((resolve, reject) => {
     let body = '';
@@ -111,9 +122,38 @@ function readBody(request: IncomingMessage) {
 }
 
 function enqueue(name: string, args: Record<string, unknown> = {}) {
-  const command = { id: randomUUID(), name, arguments: args };
+  const command = { id: randomUUID(), tool: name, arguments: args };
   commands.push(command);
   return command;
+}
+
+function openMcpEventStream(request: IncomingMessage, response: ServerResponse) {
+  response.writeHead(200, {
+    'access-control-allow-origin': '*',
+    'access-control-allow-methods': 'GET,POST,OPTIONS',
+    'access-control-allow-headers': 'content-type,accept,mcp-session-id',
+    'cache-control': 'no-cache, no-transform',
+    connection: 'keep-alive',
+    'content-type': 'text/event-stream',
+    'x-accel-buffering': 'no',
+  });
+
+  sseClients.add(response);
+  sendSseText(response, 'endpoint', '/mcp');
+  sendSse(response, 'ready', {
+    protocolVersion: '2024-11-05',
+    capabilities: { tools: {} },
+    serverInfo: { name: 'scottish-budget-tracker-canvas', version: '0.1.0' },
+  });
+
+  const heartbeat = setInterval(() => {
+    response.write(': heartbeat\n\n');
+  }, 15_000);
+
+  request.on('close', () => {
+    clearInterval(heartbeat);
+    sseClients.delete(response);
+  });
 }
 
 async function handleMcp(request: IncomingMessage, response: ServerResponse) {
@@ -162,7 +202,7 @@ async function handleMcp(request: IncomingMessage, response: ServerResponse) {
     sendJson(response, 200, {
       jsonrpc: '2.0',
       id: body.id,
-      result: { content: [{ type: 'text', text: `Queued ${command.name} (${command.id}). The browser canvas will refresh on its next poll.` }] },
+      result: { content: [{ type: 'text', text: `Queued ${command.tool} (${command.id}). The browser canvas will refresh on its next poll.` }] },
     });
     return;
   }
@@ -180,6 +220,11 @@ const server = createServer(async (request, response) => {
     const url = new URL(request.url ?? '/', `http://${request.headers.host ?? 'localhost'}`);
     if (request.method === 'GET' && url.pathname === '/health') {
       sendJson(response, 200, { ok: true });
+      return;
+    }
+
+    if (request.method === 'GET' && url.pathname === '/mcp') {
+      openMcpEventStream(request, response);
       return;
     }
 
