@@ -34,6 +34,7 @@ type BudgetLine = {
 const port = Number(process.env.PORT ?? process.env.MCP_PORT ?? 8787);
 const commands: CanvasCommand[] = [];
 let lastCanvasState: unknown = null;
+let lastAnimScripts: unknown = null;
 const sseSessions = new Map<string, ServerResponse>();
 const budgetRows = JSON.parse(readFileSync(new URL('../data/budget-level-4.normalized.json', import.meta.url), 'utf8')) as BudgetRow[];
 const budgetYears = Array.from(new Set(budgetRows.map((row) => row.year))).sort();
@@ -171,6 +172,62 @@ const tools = [
       },
       required: ['nodeId', 'annotation'],
     },
+  },
+  {
+    name: 'canvas_anim_save_script',
+    description: 'Create or overwrite an animation script. Returns the script ID.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', description: 'Script ID. Omit to auto-generate (not yet supported).' },
+        name: { type: 'string', description: 'Display name for the script.' },
+        steps: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              delay: { type: 'number', description: 'Delay in ms before this step executes.' },
+              action: { type: 'string', enum: ['highlight', 'unhighlight', 'show', 'hide', 'annotate', 'unannotate', 'move'] },
+              nodeId: { type: 'string' },
+              value: { description: 'Value: string[] for highlight, string for annotate, {x,y} for move.' },
+            },
+          },
+        },
+      },
+      required: ['id', 'name', 'steps'],
+    },
+  },
+  {
+    name: 'canvas_anim_delete_script',
+    description: 'Delete an animation script by ID.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string' },
+      },
+      required: ['id'],
+    },
+  },
+  {
+    name: 'canvas_anim_list_scripts',
+    description: 'List saved animation scripts.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'canvas_anim_play',
+    description: 'Play an animation script by ID.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', description: 'Script ID to play.' },
+      },
+      required: ['id'],
+    },
+  },
+  {
+    name: 'canvas_anim_stop',
+    description: 'Stop the currently playing animation.',
+    inputSchema: { type: 'object', properties: {} },
   },
 ];
 
@@ -388,6 +445,60 @@ function handleMcpMessage(body: {
       };
     }
 
+    if (name === 'canvas_anim_list_scripts') {
+      return {
+        jsonrpc: '2.0',
+        id: body.id,
+        result: {
+          content: [{ type: 'text', text: JSON.stringify(lastAnimScripts ?? [], null, 2) }],
+        },
+      };
+    }
+
+    if (name === 'canvas_anim_save_script') {
+      enqueue(name, args);
+      return {
+        jsonrpc: '2.0',
+        id: body.id,
+        result: {
+          content: [{ type: 'text', text: `Queued save script "${args.name}" (${args.id}). The browser will apply it on its next poll.` }],
+        },
+      };
+    }
+
+    if (name === 'canvas_anim_delete_script') {
+      enqueue(name, args);
+      return {
+        jsonrpc: '2.0',
+        id: body.id,
+        result: {
+          content: [{ type: 'text', text: `Queued delete script "${args.id}".` }],
+        },
+      };
+    }
+
+    if (name === 'canvas_anim_play') {
+      enqueue(name, args);
+      return {
+        jsonrpc: '2.0',
+        id: body.id,
+        result: {
+          content: [{ type: 'text', text: `Queued play script "${args.id}".` }],
+        },
+      };
+    }
+
+    if (name === 'canvas_anim_stop') {
+      enqueue(name, args);
+      return {
+        jsonrpc: '2.0',
+        id: body.id,
+        result: {
+          content: [{ type: 'text', text: 'Queued stop animation.' }],
+        },
+      };
+    }
+
     const command = enqueue(name, args);
     return {
       jsonrpc: '2.0',
@@ -514,6 +625,12 @@ const server = createServer(async (request, response) => {
 
     if (request.method === 'POST' && url.pathname === '/canvas/state') {
       lastCanvasState = JSON.parse(await readBody(request));
+      sendJson(response, 200, { ok: true });
+      return;
+    }
+
+    if (request.method === 'POST' && url.pathname === '/canvas/scripts') {
+      lastAnimScripts = JSON.parse(await readBody(request));
       sendJson(response, 200, { ok: true });
       return;
     }

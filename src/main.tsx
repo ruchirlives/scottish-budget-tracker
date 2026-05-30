@@ -105,6 +105,21 @@ type CanvasStorage = {
   edges: Edge[];
 };
 
+type AnimationAction = 'highlight' | 'unhighlight' | 'show' | 'hide' | 'annotate' | 'unannotate' | 'move';
+
+type AnimationStep = {
+  delay: number;
+  action: AnimationAction;
+  nodeId: string;
+  value?: string | string[] | { x: number; y: number };
+};
+
+type AnimationScript = {
+  id: string;
+  name: string;
+  steps: AnimationStep[];
+};
+
 type FlowLink = {
   year: string;
   canonicalArea: string;
@@ -175,6 +190,7 @@ const allBudgetLines: FlowCandidate[] = [
 const latestYear = years.at(-1) ?? '';
 const palette = ['#0065bd', '#2d7d46', '#d16b00', '#6f4bb2', '#c0392b', '#0f8b8d', '#5c6670'];
 const budgetCanvasStorageKey = 'scottish-budget-tracker:canvas:v1';
+const animScriptsStorageKey = 'scottish-budget-tracker:canvas:animations:v1';
 
 function rowKey(row: Pick<BudgetRow, 'year' | 'canonicalArea' | 'portfolio'>) {
   return `${row.year}||${row.canonicalArea}||${row.portfolio}`;
@@ -440,6 +456,29 @@ function readCanvasStorage(): CanvasStorage {
     return { nodes: [], edges: [] };
   }
 }
+
+function readAnimScripts(): AnimationScript[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(animScriptsStorageKey);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+const defaultDemoScript: AnimationScript = {
+  id: 'demo-highlight-key-years',
+  name: 'Demo: Highlight key years',
+  steps: [
+    { delay: 500, action: 'highlight', nodeId: '', value: ['2024-25'] },
+    { delay: 2000, action: 'unhighlight', nodeId: '' },
+    { delay: 500, action: 'highlight', nodeId: '', value: ['2025-26'] },
+    { delay: 2000, action: 'unhighlight', nodeId: '' },
+  ],
+};
 
 function refreshBudgetLineNodeData(nodes: CanvasNode[]) {
   return nodes.map((node) => {
@@ -1130,6 +1169,21 @@ function CanvasTrackerInner() {
   const [renamingNodeId, setRenamingNodeId] = React.useState<string | null>(null);
   const [editingRuleNodeId, setEditingRuleNodeId] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+  const [animScripts, setAnimScripts] = React.useState<AnimationScript[]>(() => {
+    const saved = readAnimScripts();
+    return saved.length > 0 ? saved : [defaultDemoScript];
+  });
+  const [selectedAnimScriptId, setSelectedAnimScriptId] = React.useState(animScripts[0]?.id ?? '');
+  const [isAnimating, setIsAnimating] = React.useState(false);
+  const [showAnimEditor, setShowAnimEditor] = React.useState(false);
+  const animTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const animCancelledRef = React.useRef(false);
+
+  React.useEffect(() => {
+    try {
+      window.localStorage.setItem(animScriptsStorageKey, JSON.stringify(animScripts));
+    } catch { /* ignore quota errors */ }
+  }, [animScripts]);
 
   React.useEffect(() => {
     nodesRef.current = nodes;
@@ -1164,6 +1218,71 @@ function CanvasTrackerInner() {
       // The canvas works without the MCP server; ignore transient disconnects.
     });
   }, [canvasMcpBaseUrl]);
+
+  const applyAnimStep = React.useCallback((step: AnimationStep) => {
+    setNodes((nds) => nds.map((n) => {
+      if (n.id !== step.nodeId) return n;
+      if (step.action === 'highlight') return { ...n, data: { ...n.data, highlightedYears: step.value as string[] | undefined } } as CanvasNode;
+      if (step.action === 'unhighlight') return { ...n, data: { ...n.data, highlightedYears: undefined } } as CanvasNode;
+      if (step.action === 'show') return { ...n, hidden: false };
+      if (step.action === 'hide') return { ...n, hidden: true };
+      if (step.action === 'annotate') return { ...n, data: { ...n.data, annotation: step.value as string | undefined } } as CanvasNode;
+      if (step.action === 'unannotate') return { ...n, data: { ...n.data, annotation: undefined } } as CanvasNode;
+      if (step.action === 'move') {
+        const pos = step.value as { x: number; y: number } | undefined;
+        if (pos) return { ...n, position: { x: pos.x, y: pos.y } };
+      }
+      return n;
+    }));
+  }, [setNodes]);
+
+  const stopAnimation = React.useCallback(() => {
+    animCancelledRef.current = true;
+    if (animTimerRef.current !== null) {
+      clearTimeout(animTimerRef.current);
+      animTimerRef.current = null;
+    }
+    setIsAnimating(false);
+  }, []);
+
+  const runAnimation = React.useCallback(() => {
+    const script = animScripts.find((s) => s.id === selectedAnimScriptId);
+    if (!script || script.steps.length === 0) return;
+
+    stopAnimation();
+    animCancelledRef.current = false;
+    setIsAnimating(true);
+
+    // skip steps with empty nodeId (invalid)
+    const validSteps = script.steps.filter((s) => s.nodeId);
+
+    let index = 0;
+    const runStep = () => {
+      if (animCancelledRef.current || index >= validSteps.length) {
+        setIsAnimating(false);
+        return;
+      }
+      applyAnimStep(validSteps[index]);
+      index++;
+      animTimerRef.current = setTimeout(runStep, validSteps[index - 1].delay);
+    };
+
+    animTimerRef.current = setTimeout(runStep, validSteps[0]?.delay ?? 0);
+  }, [animScripts, selectedAnimScriptId, stopAnimation, applyAnimStep]);
+
+  const runAnimationRef = React.useRef(runAnimation);
+  runAnimationRef.current = runAnimation;
+  const stopAnimationRef = React.useRef(stopAnimation);
+  stopAnimationRef.current = stopAnimation;
+
+  React.useEffect(() => {
+    if (!canvasMcpBaseUrl) return;
+    window.fetch(`${canvasMcpBaseUrl}/canvas/scripts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(animScripts),
+    }).catch(() => {});
+  }, [animScripts, canvasMcpBaseUrl]);
 
   const applyCanvasMcpCommand = React.useCallback((command: { tool: string; arguments?: Record<string, unknown> }) => {
     const args = command.arguments ?? {};
@@ -1309,6 +1428,41 @@ function CanvasTrackerInner() {
       if (id) {
         nextNodes = nextNodes.map((node) => node.id !== id ? node : ({ ...node, data: { ...node.data, annotation: annotation || undefined } } as CanvasNode));
       }
+    }
+
+    if (command.tool === 'anim_save_script') {
+      const scriptId = String(args.id ?? '');
+      const scriptName = String(args.name ?? 'New script');
+      const steps = Array.isArray(args.steps) ? args.steps : [];
+      setAnimScripts((prev) => {
+        const exists = prev.find((s) => s.id === scriptId);
+        const updated = exists
+          ? prev.map((s) => s.id === scriptId ? { ...s, name: scriptName, steps } : s)
+          : [...prev, { id: scriptId, name: scriptName, steps }];
+        setTimeout(() => window.localStorage.setItem(animScriptsStorageKey, JSON.stringify(updated)), 0);
+        return updated;
+      });
+      if (scriptId) setSelectedAnimScriptId(scriptId);
+    }
+
+    if (command.tool === 'anim_delete_script') {
+      const scriptId = String(args.id ?? '');
+      setAnimScripts((prev) => {
+        const updated = prev.filter((s) => s.id !== scriptId);
+        setTimeout(() => window.localStorage.setItem(animScriptsStorageKey, JSON.stringify(updated)), 0);
+        return updated;
+      });
+      setSelectedAnimScriptId((prev) => prev === scriptId ? '' : prev);
+    }
+
+    if (command.tool === 'anim_play') {
+      const scriptId = String(args.id ?? '');
+      if (scriptId) setSelectedAnimScriptId(scriptId);
+      setTimeout(() => runAnimationRef.current?.(), 50);
+    }
+
+    if (command.tool === 'anim_stop') {
+      stopAnimationRef.current?.();
     }
 
     nextNodes = recomputeAggregationNodes(nextNodes, nextEdges);
@@ -1665,6 +1819,23 @@ function CanvasTrackerInner() {
             accept="application/json,.json"
             onChange={(event) => void loadCanvasFile(event.target.files?.[0])}
           />
+          <span className="toolbar-sep" />
+          <select
+            className="anim-script-select"
+            value={selectedAnimScriptId}
+            onChange={(e) => setSelectedAnimScriptId(e.target.value)}
+            disabled={isAnimating}
+          >
+            {animScripts.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+          <button className={isAnimating ? 'danger' : ''} onClick={isAnimating ? stopAnimation : runAnimation} type="button" title={isAnimating ? 'Stop' : 'Play'}>
+            {isAnimating ? '⏹' : '▶'}
+          </button>
+          <button className="secondary" onClick={() => setShowAnimEditor(true)} type="button" title="Edit scripts" disabled={isAnimating}>
+            Edit
+          </button>
           <span>{nodes.length} nodes | {edges.length} links</span>
         </div>
         <div className="flow-canvas" onDragOver={handleDragOver} onDrop={handleDrop}>
@@ -1718,7 +1889,115 @@ function CanvasTrackerInner() {
           }}
         />
       ) : null}
+      {showAnimEditor && (
+        <AnimScriptEditor
+          scripts={animScripts}
+          selectedId={selectedAnimScriptId}
+          onSave={(nextScripts, nextSelectedId) => {
+            setAnimScripts(nextScripts);
+            if (nextSelectedId) setSelectedAnimScriptId(nextSelectedId);
+            setShowAnimEditor(false);
+          }}
+          onCancel={() => setShowAnimEditor(false)}
+        />
+      )}
     </section>
+  );
+}
+
+function AnimScriptEditor({ scripts, selectedId, onSave, onCancel }: {
+  scripts: AnimationScript[];
+  selectedId: string;
+  onSave: (scripts: AnimationScript[], selectedId: string | null) => void;
+  onCancel: () => void;
+}) {
+  const current = scripts.find((s) => s.id === selectedId) ?? scripts[0];
+  const [name, setName] = React.useState(current?.name ?? '');
+  const [stepsJson, setStepsJson] = React.useState(current ? JSON.stringify(current.steps, null, 2) : '[]');
+  const [error, setError] = React.useState('');
+
+  const selectedScript = scripts.find((s) => s.id === selectedId) ?? scripts[0];
+
+  const handleSave = () => {
+    setError('');
+    let steps: AnimationStep[];
+    try {
+      steps = JSON.parse(stepsJson);
+      if (!Array.isArray(steps)) { setError('Steps must be an array.'); return; }
+      for (const step of steps) {
+        if (typeof step.delay !== 'number') { setError(`Step missing "delay" number.`); return; }
+        if (typeof step.action !== 'string') { setError(`Step missing "action" string.`); return; }
+        if (typeof step.nodeId !== 'string') { setError(`Step missing "nodeId" string.`); return; }
+      }
+    } catch {
+      setError('Invalid JSON.');
+      return;
+    }
+    if (!name.trim()) { setError('Name is required.'); return; }
+
+    const id = selectedScript.id;
+    const updated = scripts.map((s) => s.id === id ? { ...s, name: name.trim(), steps } : s);
+    onSave(updated, id);
+  };
+
+  const handleAddNew = () => {
+    const newScript: AnimationScript = {
+      id: `script-${Date.now()}`,
+      name: 'New script',
+      steps: [],
+    };
+    const updated = [...scripts, newScript];
+    setName(newScript.name);
+    setStepsJson('[]');
+    setError('');
+    onSave(updated, newScript.id);
+  };
+
+  const handleDelete = () => {
+    if (scripts.length <= 1) return;
+    const updated = scripts.filter((s) => s.id !== selectedId);
+    const nextSelected = updated[0]?.id ?? null;
+    onSave(updated, nextSelected);
+  };
+
+  return (
+    <div className="modal-backdrop" onClick={onCancel}>
+      <div className="sankey-modal anim-editor-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="sankey-modal-header">
+          <span><strong>Animation Script Editor</strong></span>
+          <button onClick={onCancel} type="button">✕</button>
+        </div>
+        <select value={selectedId} onChange={(e) => {
+          const s = scripts.find((sc) => sc.id === e.target.value);
+          if (s) { setName(s.name); setStepsJson(JSON.stringify(s.steps, null, 2)); setError(''); }
+          onSave(scripts, s?.id ?? null);
+        }}>
+          {scripts.map((s) => (
+            <option key={s.id} value={s.id}>{s.name}</option>
+          ))}
+        </select>
+        <div className="anim-editor-actions">
+          <button onClick={handleAddNew} type="button">New</button>
+          <button className="danger" onClick={handleDelete} type="button" disabled={scripts.length <= 1}>Delete</button>
+          <label>Name: <input value={name} onChange={(e) => setName(e.target.value)} /></label>
+        </div>
+        <div>
+          <label>Steps (JSON):</label>
+          <textarea
+            className="anim-editor-textarea"
+            value={stepsJson}
+            onChange={(e) => setStepsJson(e.target.value)}
+            rows={14}
+            spellCheck={false}
+          />
+        </div>
+        {error && <p className="anim-editor-error">{error}</p>}
+        <div className="anim-editor-footer">
+          <button className="secondary" onClick={onCancel}>Cancel</button>
+          <button onClick={handleSave}>Save script</button>
+        </div>
+      </div>
+    </div>
   );
 }
 
