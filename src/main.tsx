@@ -18,6 +18,7 @@ import {
   type NodeChange,
   type Node,
   type NodeProps,
+  SelectionMode,
 } from '@xyflow/react';
 import {
   Bar,
@@ -1235,6 +1236,8 @@ function CanvasTrackerInner() {
             }}
             multiSelectionKeyCode={null}
             selectionKeyCode={['Shift']}
+            selectionOnDrag
+            selectionMode={SelectionMode.Partial}
             fitView
           >
             <Background color="#d8dee8" gap={18} />
