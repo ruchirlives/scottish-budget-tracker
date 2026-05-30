@@ -1868,6 +1868,7 @@ function CanvasTrackerInner() {
       app: 'scottish-budget-tracker',
       nodes,
       edges,
+      animScripts,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -1890,6 +1891,11 @@ function CanvasTrackerInner() {
       const loadedEdges = parsed.edges as Edge[];
       setNodes(recomputeAggregationNodes(loadedNodes, loadedEdges));
       setEdges(loadedEdges);
+      const loadedScripts = (parsed as Record<string, unknown>).animScripts as AnimationScript[] | undefined;
+      if (Array.isArray(loadedScripts) && loadedScripts.length > 0) {
+        setAnimScripts(loadedScripts);
+        setSelectedAnimScriptId(loadedScripts[0].id);
+      }
     } catch (error) {
       window.alert(error instanceof Error ? error.message : 'Unable to load canvas file.');
     } finally {
@@ -2106,10 +2112,11 @@ function AnimScriptEditor({ scripts, selectedId, onSave, onCancel }: {
     try {
       steps = JSON.parse(stepsJson);
       if (!Array.isArray(steps)) { setError('Steps must be an array.'); return; }
+      const nodeOptional = new Set(['zoom', 'pan', 'text']);
       for (const step of steps) {
         if (typeof step.delay !== 'number') { setError(`Step missing "delay" number.`); return; }
         if (typeof step.action !== 'string') { setError(`Step missing "action" string.`); return; }
-        if (typeof step.nodeId !== 'string') { setError(`Step missing "nodeId" string.`); return; }
+        if (!nodeOptional.has(step.action) && typeof step.nodeId !== 'string') { setError(`Step missing "nodeId" string.`); return; }
       }
     } catch {
       setError('Invalid JSON.');
@@ -2152,7 +2159,6 @@ function AnimScriptEditor({ scripts, selectedId, onSave, onCancel }: {
         <select value={selectedId} onChange={(e) => {
           const s = scripts.find((sc) => sc.id === e.target.value);
           if (s) { setName(s.name); setStepsJson(JSON.stringify(s.steps, null, 2)); setError(''); }
-          onSave(scripts, s?.id ?? null);
         }}>
           {scripts.map((s) => (
             <option key={s.id} value={s.id}>{s.name}</option>
