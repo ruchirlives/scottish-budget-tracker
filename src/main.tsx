@@ -15,6 +15,7 @@ import {
   useReactFlow,
   type Connection,
   type Edge,
+  type NodeChange,
   type Node,
   type NodeProps,
 } from '@xyflow/react';
@@ -991,6 +992,10 @@ function CanvasTrackerInner() {
   const [renamingNodeId, setRenamingNodeId] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
+  const handleNodesChange = React.useCallback((changes: NodeChange<CanvasNode>[]) => {
+    onNodesChange(changes);
+  }, [onNodesChange]);
+
   const availableLines = React.useMemo(() => (
     aggregateBy(rows, (row) => `${row.canonicalArea}||${row.portfolio}`)
       .map((row) => {
@@ -1061,18 +1066,41 @@ function CanvasTrackerInner() {
   }
 
   function addAggregation() {
+    const selectedNodes = nodes.filter((node) => node.selected);
+    const selectedBounds = selectedNodes.reduce((bounds, node) => ({
+      minX: Math.min(bounds.minX, node.position.x),
+      maxX: Math.max(bounds.maxX, node.position.x),
+      minY: Math.min(bounds.minY, node.position.y),
+      maxY: Math.max(bounds.maxY, node.position.y),
+    }), { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity });
     const id = `aggregation:${crypto.randomUUID()}`;
+    const aggregationCount = nodes.filter((node) => node.type === 'aggregation').length;
     const nextNode: AggregationNode = {
       id,
       type: 'aggregation',
-      position: { x: 520, y: 160 + nodes.filter((node) => node.type === 'aggregation').length * 90 },
+      position: selectedNodes.length > 0
+        ? { x: selectedBounds.maxX + 320, y: selectedBounds.minY }
+        : { x: 520, y: 160 + aggregationCount * 90 },
       data: {
-        label: `Aggregation ${nodes.filter((node) => node.type === 'aggregation').length + 1}`,
+        label: `Aggregation ${aggregationCount + 1}`,
         inputCount: 0,
         series: sumSeries([]),
       },
     };
     setNodes((currentNodes) => [...currentNodes, nextNode]);
+    if (selectedNodes.length > 0) {
+      setEdges((currentEdges) => [
+        ...currentEdges,
+        ...selectedNodes
+          .filter((node) => node.id !== id && !hasCanvasPath(currentEdges, id, node.id))
+          .map((node) => ({
+            id: `${node.id}->${id}`,
+            source: node.id,
+            target: id,
+            style: { stroke: '#0065bd', strokeWidth: 2 },
+          })),
+      ]);
+    }
   }
 
   function clearCanvas() {
@@ -1189,7 +1217,7 @@ function CanvasTrackerInner() {
             nodes={nodes}
             edges={edges}
             nodeTypes={canvasNodeTypes}
-            onNodesChange={onNodesChange}
+            onNodesChange={handleNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             onNodeDoubleClick={(_event, node) => {
