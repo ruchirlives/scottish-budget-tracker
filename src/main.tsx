@@ -71,9 +71,24 @@ type AggregationNodeData = {
   inputCount: number;
 };
 
+type RuleCondition = {
+  id: string;
+  field: 'portfolio' | 'canonicalArea' | 'area' | 'budgetLine' | 'year' | 'total';
+  operator: 'contains' | 'equals' | 'greater_than' | 'less_than' | 'matches_regex';
+  value: string;
+};
+
+type RuleAggregationNodeData = {
+  label: string;
+  conditions: RuleCondition[];
+  series: Array<{ year: string; amount: number }>;
+  matchCount: number;
+};
+
 type BudgetLineNode = Node<BudgetLineNodeData, 'budgetLine'>;
 type AggregationNode = Node<AggregationNodeData, 'aggregation'>;
-type CanvasNode = BudgetLineNode | AggregationNode;
+type RuleAggregationNode = Node<RuleAggregationNodeData, 'ruleAggregation'>;
+type CanvasNode = BudgetLineNode | AggregationNode | RuleAggregationNode;
 
 type CanvasStorage = {
   nodes: CanvasNode[];
@@ -440,6 +455,12 @@ function recomputeAggregationNodes(nodes: CanvasNode[], edges: Edge[]) {
       return series;
     }
 
+    if (node.type === 'ruleAggregation') {
+      const series = (node.data as RuleAggregationNodeData).series;
+      seriesCache.set(nodeId, series);
+      return series;
+    }
+
     if (visiting.has(nodeId)) return sumSeries([]);
     const nextVisiting = new Set(visiting);
     nextVisiting.add(nodeId);
@@ -461,6 +482,55 @@ function recomputeAggregationNodes(nodes: CanvasNode[], edges: Edge[]) {
     };
   });
 }
+
+function valueForRuleField(row: BudgetRow, field: RuleCondition['field']) {
+  if (field === 'total') return row.total;
+  return row[field];
+}
+
+function conditionMatches(row: BudgetRow, condition: RuleCondition) {
+  const expected = condition.value.trim();
+  if (!expected) return true;
+  const actual = valueForRuleField(row, condition.field);
+
+  if (typeof actual === 'number') {
+    const expectedNumber = Number(expected);
+    if (!Number.isFinite(expectedNumber)) return false;
+    if (condition.operator === 'greater_than') return actual > expectedNumber;
+    if (condition.operator === 'less_than') return actual < expectedNumber;
+    return actual === expectedNumber;
+  }
+
+  const actualText = String(actual ?? '').toLowerCase();
+  const expectedText = expected.toLowerCase();
+  if (condition.operator === 'equals') return actualText === expectedText;
+  if (condition.operator === 'matches_regex') {
+    try {
+      return new RegExp(expected, 'i').test(String(actual ?? ''));
+    } catch {
+      return false;
+    }
+  }
+  return actualText.includes(expectedText);
+}
+
+function rowsForRule(conditions: RuleCondition[]) {
+  return rows.filter((row) => conditions.every((condition) => conditionMatches(row, condition)));
+}
+
+function seriesForRule(conditions: RuleCondition[]) {
+  const matchingRows = rowsForRule(conditions);
+  return {
+    matchCount: matchingRows.length,
+    series: years.map((year) => ({
+      year,
+      amount: matchingRows
+        .filter((row) => row.year === year)
+        .reduce((sum, row) => sum + row.total, 0),
+    })),
+  };
+}
+
 function BudgetTracker() {
   const [selectedYear, setSelectedYear] = React.useState(latestYear);
   const [query, setQuery] = React.useState('');
@@ -974,6 +1044,7 @@ function OutturnTracker() {
 const canvasNodeTypes = {
   budgetLine: BudgetLineCanvasNode,
   aggregation: AggregationCanvasNode,
+  ruleAggregation: RuleAggregationCanvasNode,
 };
 
 let toggleCanvasNodeSelection: ((nodeId: string) => void) | null = null;
@@ -993,6 +1064,7 @@ function CanvasTrackerInner() {
   const [nodes, setNodes, onNodesChange] = useNodesState<CanvasNode>(refreshBudgetLineNodeData(initialCanvas.nodes));
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialCanvas.edges);
   const [renamingNodeId, setRenamingNodeId] = React.useState<string | null>(null);
+  const [editingRuleNodeId, setEditingRuleNodeId] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
   const handleNodesChange = React.useCallback((changes: NodeChange<CanvasNode>[]) => {
@@ -1031,6 +1103,22 @@ function CanvasTrackerInner() {
   React.useEffect(() => {
     setNodes((currentNodes) => recomputeAggregationNodes(currentNodes, edges));
   }, [edges, setNodes]);
+
+  React.useEffect(() => {
+    setNodes((currentNodes) => currentNodes.map((node) => {
+      if (node.type !== 'ruleAggregation') return node;
+      const data = node.data as RuleAggregationNodeData;
+      const result = seriesForRule(data.conditions);
+      return {
+        ...node,
+        data: {
+          ...data,
+          matchCount: result.matchCount,
+          series: result.series,
+        },
+      };
+    }));
+  }, [setNodes]);
 
   React.useEffect(() => {
     window.localStorage.setItem(budgetCanvasStorageKey, JSON.stringify({ nodes, edges }));
@@ -1120,6 +1208,31 @@ function CanvasTrackerInner() {
     }
   }
 
+  function addRuleAggregation() {
+    const ruleCount = nodes.filter((node) => node.type === 'ruleAggregation').length;
+    const conditions: RuleCondition[] = [{
+      id: crypto.randomUUID(),
+      field: 'portfolio',
+      operator: 'contains',
+      value: '',
+    }];
+    const result = seriesForRule(conditions);
+    const id = `rule:${crypto.randomUUID()}`;
+    const nextNode: RuleAggregationNode = {
+      id,
+      type: 'ruleAggregation',
+      position: { x: 520, y: 160 + ruleCount * 100 },
+      data: {
+        label: `Rule ${ruleCount + 1}`,
+        conditions,
+        matchCount: result.matchCount,
+        series: result.series,
+      },
+    };
+    setNodes((currentNodes) => [...currentNodes, nextNode]);
+    setEditingRuleNodeId(id);
+  }
+
   function clearCanvas() {
     const shouldClear = window.confirm('Clear the saved canvas layout and aggregations?');
     if (!shouldClear) return;
@@ -1182,6 +1295,7 @@ function CanvasTrackerInner() {
   }
 
   const renamingNode = nodes.find((node) => node.id === renamingNodeId && node.type === 'aggregation') as AggregationNode | undefined;
+  const editingRuleNode = nodes.find((node) => node.id === editingRuleNodeId && node.type === 'ruleAggregation') as RuleAggregationNode | undefined;
 
   return (
     <section className="canvas-workspace">
@@ -1214,6 +1328,9 @@ function CanvasTrackerInner() {
           <button className="secondary" onClick={clearCanvas} type="button">
             Clear canvas
           </button>
+          <button className="secondary" onClick={addRuleAggregation} type="button">
+            Rule
+          </button>
           <button className="secondary" onClick={saveCanvasFile} type="button">
             Save
           </button>
@@ -1239,6 +1356,7 @@ function CanvasTrackerInner() {
             onConnect={onConnect}
             onNodeDoubleClick={(_event, node) => {
               if (node.type === 'aggregation') setRenamingNodeId(node.id);
+              if (node.type === 'ruleAggregation') setEditingRuleNodeId(node.id);
             }}
             multiSelectionKeyCode={null}
             selectionKeyCode={['Shift']}
@@ -1259,6 +1377,20 @@ function CanvasTrackerInner() {
           initialValue={(renamingNode.data as AggregationNodeData).label}
           onCancel={() => setRenamingNodeId(null)}
           onSave={renameAggregation}
+        />
+      ) : null}
+      {editingRuleNode ? (
+        <RuleAggregationDialog
+          data={editingRuleNode.data as RuleAggregationNodeData}
+          onCancel={() => setEditingRuleNodeId(null)}
+          onSave={(nextData) => {
+            setNodes((currentNodes) => currentNodes.map((node) => (
+              node.id === editingRuleNode.id && node.type === 'ruleAggregation'
+                ? { ...node, data: nextData }
+                : node
+            )));
+            setEditingRuleNodeId(null);
+          }}
         />
       ) : null}
     </section>
@@ -1288,11 +1420,89 @@ function AggregationCanvasNode({ id, data }: NodeProps<AggregationNode>) {
   );
 }
 
+function RuleAggregationCanvasNode({ id, data }: NodeProps<RuleAggregationNode>) {
+  return (
+    <div className="canvas-node rule-node" onMouseDownCapture={(event) => handleCanvasNodeMouseDown(event, id)}>
+      <strong>{data.label}</strong>
+      <span>{data.matchCount} matched rows</span>
+      <small>{data.conditions.map((condition) => `${condition.field} ${condition.operator} "${condition.value}"`).join(' AND ')}</small>
+      <SeriesMiniTable series={data.series} />
+      <Handle type="source" position={Position.Right} />
+    </div>
+  );
+}
+
 function handleCanvasNodeMouseDown(event: React.MouseEvent, nodeId: string) {
   if (!event.ctrlKey && !event.metaKey) return;
   event.preventDefault();
   event.stopPropagation();
   toggleCanvasNodeSelection?.(nodeId);
+}
+
+const ruleFields: RuleCondition['field'][] = ['portfolio', 'canonicalArea', 'area', 'budgetLine', 'year', 'total'];
+const ruleOperators: RuleCondition['operator'][] = ['contains', 'equals', 'greater_than', 'less_than', 'matches_regex'];
+
+function RuleAggregationDialog({
+  data,
+  onCancel,
+  onSave,
+}: {
+  data: RuleAggregationNodeData;
+  onCancel: () => void;
+  onSave: (data: RuleAggregationNodeData) => void;
+}) {
+  const [label, setLabel] = React.useState(data.label);
+  const [conditions, setConditions] = React.useState<RuleCondition[]>(data.conditions);
+  const preview = React.useMemo(() => seriesForRule(conditions), [conditions]);
+
+  function updateCondition(id: string, patch: Partial<RuleCondition>) {
+    setConditions((current) => current.map((condition) => condition.id === id ? { ...condition, ...patch } : condition));
+  }
+
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <form className="rule-dialog" onSubmit={(event) => {
+        event.preventDefault();
+        onSave({
+          label: label.trim() || 'Rule',
+          conditions,
+          matchCount: preview.matchCount,
+          series: preview.series,
+        });
+      }}>
+        <h2>Rule aggregation</h2>
+        <label>
+          Name
+          <input value={label} onChange={(event) => setLabel(event.target.value)} />
+        </label>
+        <div className="rule-conditions">
+          {conditions.map((condition) => (
+            <div className="rule-condition-row" key={condition.id}>
+              <select value={condition.field} onChange={(event) => updateCondition(condition.id, { field: event.target.value as RuleCondition['field'] })}>
+                {ruleFields.map((field) => <option key={field} value={field}>{field}</option>)}
+              </select>
+              <select value={condition.operator} onChange={(event) => updateCondition(condition.id, { operator: event.target.value as RuleCondition['operator'] })}>
+                {ruleOperators.map((operator) => <option key={operator} value={operator}>{operator}</option>)}
+              </select>
+              <input value={condition.value} onChange={(event) => updateCondition(condition.id, { value: event.target.value })} />
+              <button type="button" onClick={() => setConditions((current) => current.filter((item) => item.id !== condition.id))}>Remove</button>
+            </div>
+          ))}
+        </div>
+        <button type="button" onClick={() => setConditions((current) => [...current, {
+          id: crypto.randomUUID(),
+          field: 'portfolio',
+          operator: 'contains',
+          value: '',
+        }])}>Add condition</button>
+        <p>{preview.matchCount} rows match this rule.</p>
+        <div className="dialog-actions">
+          <button type="button" onClick={onCancel}>Cancel</button>
+          <button type="submit">Save</button>
+        </div>
+      </form>
+    </div>
+  );
 }
 
 function SeriesMiniTable({ series }: { series: Array<{ year: string; amount: number }> }) {

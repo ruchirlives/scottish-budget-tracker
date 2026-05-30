@@ -708,6 +708,19 @@ th {
   background: #fff8ed;
 }
 
+.rule-node {
+  background: #eefbf5;
+  border-color: #2d7d46;
+}
+
+.rule-node small {
+  color: #2d7d46;
+  display: block;
+  font-size: 0.72rem;
+  margin-top: 6px;
+  max-width: 260px;
+}
+
 .canvas-node table {
   font-size: 0.76rem;
   margin-top: 8px;
@@ -749,6 +762,65 @@ th {
   max-width: 420px;
   padding: 18px;
   width: calc(100vw - 32px);
+}
+
+.rule-dialog {
+  background: #ffffff;
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  box-shadow: 0 18px 48px rgb(15 23 42 / 20%);
+  display: grid;
+  gap: 12px;
+  max-width: 760px;
+  padding: 18px;
+  width: calc(100vw - 32px);
+}
+
+.rule-dialog label {
+  color: #475569;
+  display: grid;
+  font-size: 0.85rem;
+  font-weight: 700;
+  gap: 5px;
+}
+
+.rule-dialog input,
+.rule-dialog select {
+  border: 1px solid #cfd8e3;
+  border-radius: 6px;
+  min-height: 38px;
+  padding: 8px 10px;
+}
+
+.rule-conditions {
+  display: grid;
+  gap: 8px;
+}
+
+.rule-condition-row {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr 1fr minmax(180px, 2fr) auto;
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.rule-dialog button {
+  border: 1px solid #cfd8e3;
+  border-radius: 6px;
+  min-height: 38px;
+  padding: 8px 12px;
+}
+
+.rule-dialog button[type="submit"] {
+  background: #0065bd;
+  border-color: #0065bd;
+  color: #ffffff;
+  font-weight: 700;
 }
 
 .rename-dialog input {
