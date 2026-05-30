@@ -722,6 +722,13 @@ th {
   min-width: auto;
 }
 
+.react-flow__node.selected .canvas-node {
+  border-color: #d16b00;
+  box-shadow:
+    0 0 0 3px rgb(209 107 0 / 22%),
+    0 8px 18px rgb(15 23 42 / 10%);
+}
+
 .modal-backdrop {
   align-items: center;
   background: rgb(15 23 42 / 32%);

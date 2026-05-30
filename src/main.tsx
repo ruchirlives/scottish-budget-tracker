@@ -1097,7 +1097,8 @@ function CanvasTrackerInner() {
             id: `${node.id}->${id}`,
             source: node.id,
             target: id,
-            style: { stroke: '#0065bd', strokeWidth: 2 },
+            animated: true,
+            style: { stroke: '#d16b00', strokeWidth: 3 },
           })),
       ]);
     }
